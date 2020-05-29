@@ -1613,7 +1613,7 @@ class ConjunctiveGraph(Graph):
             g_id = URIRef(g_id)
             
         super(ConjunctiveGraph, self).__init__(store=self.store,identifier=g_id)
-        self.remove((None,None,None))
+        super(ConjunctiveGraph,self).remove((None,None,None))
         if format is None:
             format = source.content_type
         if format is None:
@@ -1628,11 +1628,6 @@ class ConjunctiveGraph(Graph):
                 source.close()
         return self
 
-        # context = Graph(store=self.store, identifier=g_id)
-        # context.remove((None, None, None))  # hmm ?
-        # context.parse(source, publicID=publicID, format=format, **args)
-        # print(type(context))
-        # return context
 
     def __reduce__(self):
         return ConjunctiveGraph, (self.store, self.identifier)
