@@ -98,6 +98,7 @@ from hashlib import sha256
 
 from datetime import datetime
 from collections import defaultdict
+import typing as t
 
 
 def _total_seconds(td):
@@ -191,6 +192,14 @@ class IsomorphicGraph(ConjunctiveGraph):
 
 
 class Color:
+    """
+
+    """
+
+    _hash_cache: t.Dict[t.Union[Node, t.Tuple], str]
+    nodes: t.List[Node]
+    color: t.Union[Node]
+
     def __init__(self, nodes, hashfunc, color=(), hash_cache=None):
         if hash_cache is None:
             hash_cache = {}
@@ -204,10 +213,15 @@ class Color:
         nodes, color = self.key()
         return "Color %s (%s nodes)" % (color, nodes)
 
+    def __repr__(self):
+        nodes, color = self.key()
+        return f"<{type(self).__module__}.{type(self).__name__}(color = {self.color!r}, nodes = {self.nodes!r}, hashfunc = {self.hashfunc!r})>"
+
+
     def key(self):
         return (len(self.nodes), self.hash_color())
 
-    def hash_color(self, color=None):
+    def hash_color(self, color: t.Optional[t.Union[Node]]=None):
         if color is None:
             color = self.color
         if color in self._hash_cache:
@@ -272,7 +286,7 @@ class _TripleCanonicalizer(object):
     def _discrete(self, coloring):
         return len([c for c in coloring if not c.discrete()]) == 0
 
-    def _initial_color(self):
+    def _initial_color(self) -> t.List[Color]:
         """Finds an initial color for the graph.
 
         Finds an initial color fo the graph by finding all blank nodes and
@@ -319,7 +333,7 @@ class _TripleCanonicalizer(object):
             for node in c.nodes:
                 yield node, c
 
-    def _refine(self, coloring, sequence):
+    def _refine(self, coloring: t.List[Color], sequence: t.List[Color]):
         sequence = sorted(sequence, key=lambda x: x.key(), reverse=True)
         coloring = coloring[:]
         while len(sequence) > 0 and not self._discrete(coloring):

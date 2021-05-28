@@ -1,11 +1,15 @@
 from collections import Counter
+from rdflib.term import Node
 from rdflib import Graph, RDF, BNode, URIRef, Namespace, ConjunctiveGraph, Literal
-from rdflib.compare import to_isomorphic, to_canonical_graph
+from rdflib.namespace import FOAF, OWL, RDFS, XSD
+from rdflib.compare import to_isomorphic, to_canonical_graph, _TripleCanonicalizer
 
 import rdflib
 from rdflib.plugins.stores.memory import Memory
 
 from io import StringIO
+import unittest
+import typing as t
 
 
 def get_digest_value(rdf, mimetype):
@@ -503,3 +507,191 @@ def test_issue725_collapsing_bnodes_2():
     assert (
         g_count_signature == cg_count_signature
     ), "canonicalization changed node position counts"
+
+
+import logging, os, sys
+
+logging.basicConfig(
+    level=os.environ.get("PYTHON_LOGGING_LEVEL", logging.DEBUG),
+    stream=sys.stderr,
+    datefmt="%Y-%m-%dT%H:%M:%S",
+    format=(
+        "%(asctime)s %(process)d %(thread)d %(levelno)03d:%(levelname)-8s "
+        "%(name)-12s %(module)s:%(lineno)s:%(funcName)s %(message)s"
+    ),
+)
+
+import typing as t
+
+TripleT = t.Tuple[Node, Node, Node]
+TripleSetT = t.Set[TripleT]
+GenericT = t.TypeVar("GenericT")
+
+
+def to_tripleset(input: t.Iterable[TripleT]) -> TripleSetT:
+    result: TripleSetT = set()
+    for triple in input:
+        result.add(triple)
+    return result
+
+
+def to_triplesets(input: t.Sequence[Graph]) -> t.Sequence[TripleSetT]:
+    result: t.List[TripleSetT] = []
+    for graph in input:
+        result.append(to_tripleset(graph))
+    return result
+
+
+class TestConsistency(unittest.TestCase):
+    ttlpreamble: str
+    ttlfrags: t.List[str]
+    tsets: t.List[TripleSetT]
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        cls.ttlpreamble = f"""
+        @prefix foaf: <{FOAF}> .
+        """
+        ttlfrags: t.List[str] = []
+        ttlfrags.append(
+            """
+            [] a foaf:Person ;
+                foaf:name "Golan Trevize"@en ;
+                .
+            """
+        )
+        ttlfrags.append(
+            """
+            [] a foaf:Person ;
+                foaf:name "Janov Pelorat"@en ;
+                .
+            """
+        )
+        ttlfrags.append(
+            """
+            [] a foaf:Person ;
+                foaf:name "R. Daneel Olivaw"@en ;
+                .
+            """
+        )
+        cls.ttlfrags = ttlfrags
+
+        tsets: t.List[TripleSetT] = []
+        bnode = BNode()
+        tsets.append(
+            {
+                (bnode, FOAF.name, Literal("Golan Trevize")),
+                (bnode, RDF.type, FOAF.Person),
+            }
+        )
+        bnode = BNode()
+        tsets.append(
+            {
+                (bnode, FOAF.name, Literal("Janov Pelorat")),
+                (bnode, RDF.type, FOAF.Person),
+            }
+        )
+        bnode = BNode()
+        tsets.append(
+            {
+                (bnode, FOAF.name, Literal("R. Daneel Olivaw")),
+                (bnode, RDF.type, FOAF.Person),
+            }
+        )
+        cls.tsets = tsets
+
+    def test_consistent_ids_ttl(self) -> None:
+
+        graphs: t.List[Graph] = []
+        cgraphs: t.List[Graph] = []
+        ctsets: t.List[TripleSetT] = []
+        accumulator: str = self.ttlpreamble
+        for idx, ttlfrags in enumerate(self.ttlfrags):
+            accumulator += ttlfrags
+            graph = Graph()
+            graph.parse(format="turtle", data=accumulator)
+            graphs.append(graph)
+            cgraph = to_canonical_graph(graph)
+            cgraphs.append(cgraph)
+            ctset = to_tripleset(cgraph)
+            ctsets.append(ctset)
+            if idx > 0:
+                logging.debug(
+                    "idx=%s:cgraphs[-2] = \n%s",
+                    idx,
+                    cgraphs[-2].skolemize().serialize(format="n3"),
+                )
+                logging.debug(
+                    "idx=%s:cgraphs[-1] = \n%s",
+                    idx,
+                    cgraphs[-1].skolemize().serialize(format="n3"),
+                )
+                assert ctsets[-2].issubset(ctsets[-1])
+
+    def test_canonicalizer(self) -> None:
+        graph = Graph()
+        graph += self.tsets[0]
+        stats: t.Dict[str, t.Any] = {}
+
+        tcan = _TripleCanonicalizer(graph)
+        colors = tcan._initial_color()
+        logging.info("colors = %s", colors)
+        logging.info("colors = %s", [str(color) for color in colors])
+        result = set(tcan.canonical_triples(stats))
+        logging.info("stats = %s", stats)
+        logging.info("result = %s", result)
+
+
+
+        graph += self.tsets[1]
+        stats = {}
+        tcan = _TripleCanonicalizer(graph)
+        colors = tcan._initial_color()
+        logging.info("colors = %s", colors)
+        logging.info("colors = %s", [str(color) for color in colors])
+        result = set(tcan.canonical_triples(stats))
+        logging.info("stats = %s", stats)
+        logging.info("result = %s", result)
+
+        # result = set(_TripleCanonicalizer(graph).canonical_triples(stats))
+        # logging.info("stats = %s", stats)
+        # logging.info("result = %s", result)
+
+
+        # graph += self.tsets[1]
+        # stats = {}
+        # result = set(_TripleCanonicalizer(graph).canonical_triples(stats))
+        # logging.info("stats = %s", stats)
+        # logging.info("result = %s", result)
+
+    def test_consistent_ids(self) -> None:
+
+        graphs: t.List[Graph] = []
+        cgraphs: t.List[Graph] = []
+        ctsets: t.List[TripleSetT] = []
+        accumulator: TripleSetT = set()
+        for idx, tset in enumerate(self.tsets):
+            accumulator.update(tset)
+            graph = Graph()
+            graph += accumulator
+            graphs.append(graph)
+            cgraph = to_canonical_graph(graph)
+            cgraphs.append(cgraph)
+            ctset = to_tripleset(cgraph)
+            ctsets.append(ctset)
+            if idx > 0:
+                logging.debug(
+                    "cgraphs[idx=%s-1] = \n%s",
+                    idx,
+                    cgraphs[idx - 1].skolemize().serialize(format="n3"),
+                )
+                logging.debug(
+                    "cgraphs[idx=%s] = \n%s",
+                    idx,
+                    cgraphs[idx].skolemize().serialize(format="n3"),
+                )
+                assert ctsets[idx].issubset(ctsets[idx - 1])
+
+
+if __name__ == "__main__":
+    unittest.main()
