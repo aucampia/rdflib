@@ -633,22 +633,22 @@ class TestConsistency(unittest.TestCase):
         graph += self.tsets[0]
         stats: t.Dict[str, t.Any] = {}
 
-        tcan = _TripleCanonicalizer(graph)
-        colors = tcan._initial_color()
-        logging.info("colors = %s", colors)
-        logging.info("colors = %s", [str(color) for color in colors])
-        result = set(tcan.canonical_triples(stats))
-        logging.info("stats = %s", stats)
-        logging.info("result = %s", result)
+        # tcan = _TripleCanonicalizer(graph)
+        # # colors = tcan._initial_color()
+        # # logging.info("colors = %s", colors)
+        # # logging.info("colors = %s", [str(color) for color in colors])
+        # result = set(tcan.canonical_triples(stats))
+        # logging.info("stats = %s", stats)
+        # logging.info("result = %s", result)
 
 
 
         graph += self.tsets[1]
         stats = {}
         tcan = _TripleCanonicalizer(graph)
-        colors = tcan._initial_color()
-        logging.info("colors = %s", colors)
-        logging.info("colors = %s", [str(color) for color in colors])
+        # colors = tcan._initial_color()
+        # logging.info("colors = %s", colors)
+        # logging.info("colors = %s", [str(color) for color in colors])
         result = set(tcan.canonical_triples(stats))
         logging.info("stats = %s", stats)
         logging.info("result = %s", result)
