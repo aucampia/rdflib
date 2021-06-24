@@ -1104,7 +1104,6 @@ class Graph(Node):
             data=data,
             format=format,
         )
-        
         if format is None:
             format = source.content_type
         could_not_guess_format = False
@@ -1407,7 +1406,6 @@ class ConjunctiveGraph(Graph):
         assert self.store.context_aware, (
             "ConjunctiveGraph must be backed by" " a context aware store."
         )
-        
         self.context_aware = True
         self.default_union = True  # Conjunctive!
         self.default_context = Graph(
@@ -1572,9 +1570,6 @@ class ConjunctiveGraph(Graph):
             context_id = "#context"
         return URIRef(context_id, base=uri)
 
-    # def identifier(self,id):
-    #     self._identifier=id
-    
     def parse(
         self,
         source=None,
@@ -1605,20 +1600,16 @@ class ConjunctiveGraph(Graph):
             data=data,
             format=format,
         )
-        
-        # print(source.getPublicId(),publicID)
-        
+
         g_id = publicID and publicID or source.getPublicId()
         if not isinstance(g_id, Node):
             g_id = URIRef(g_id)
-            
+
         super(ConjunctiveGraph, self).__init__(store=self.store,identifier=g_id)
         super(ConjunctiveGraph,self).remove((None,None,None))
         if format is None:
             format = source.content_type
         if format is None:
-            # raise Exception("Could not determine format for %r. You can" + \
-            # "expicitly specify one with the format argument." % source)
             format = "application/rdf+xml"
         parser = plugin.get(format, Parser)()
         try:
@@ -1627,7 +1618,6 @@ class ConjunctiveGraph(Graph):
             if source.auto_close:
                 source.close()
         return self
-
 
     def __reduce__(self):
         return ConjunctiveGraph, (self.store, self.identifier)
