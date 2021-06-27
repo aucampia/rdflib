@@ -1,4 +1,7 @@
 import logging
+from rdflib.term import Literal
+from typing import Optional, TYPE_CHECKING, Tuple, Union
+import typing_extensions
 from urllib.request import urlopen, Request
 from urllib.parse import urlencode
 from urllib.error import HTTPError, URLError
@@ -11,6 +14,8 @@ from rdflib import BNode
 
 log = logging.getLogger(__name__)
 
+if TYPE_CHECKING:
+    import typing_extensions as te
 
 class SPARQLConnectorException(Exception):
     pass
@@ -33,11 +38,11 @@ class SPARQLConnector(object):
 
     def __init__(
         self,
-        query_endpoint=None,
-        update_endpoint=None,
-        returnFormat="xml",
-        method="GET",
-        auth=None,
+        query_endpoint: Optional[str]=None,
+        update_endpoint: Optional[str]=None,
+        returnFormat: str="xml",
+        method: "te.Literal['GET', 'POST', 'POST_FORM']" ="GET",
+        auth: Optional[Tuple[str, str]]=None,
         **kwargs
     ):
         """
