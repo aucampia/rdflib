@@ -44,7 +44,7 @@ nose = "*"
 sphinx = "<5"
 sphinxcontrib-apidoc = "*"
 mypy = "^0.812"
-darker = "^1.2.3"
+darker = "^1.2.4"
 isort = "^5.8.0"
 tox = "^3.23.1"
 
