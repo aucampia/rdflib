@@ -46,7 +46,7 @@ sphinxcontrib-apidoc = "*"
 mypy = "^0.812"
 darker = "^1.2.3"
 isort = "^5.8.0"
-tox = "^3.23.1"
+tox = "^3.24.1"
 
 [tool.poetry.extras]
 docs = ["sphinx", "sphinxcontrib-apidoc"]
