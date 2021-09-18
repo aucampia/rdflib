@@ -1,11 +1,21 @@
-from typing import Optional, Union, Type, cast, overload, Generator, Tuple
+from typing import (
+    Any,
+    Iterable,
+    Optional,
+    Union,
+    Type,
+    cast,
+    overload,
+    Generator,
+    Tuple,
+)
 import logging
 from warnings import warn
 import random
 from rdflib.namespace import Namespace, RDF
 from rdflib import plugin, exceptions, query, namespace
 import rdflib.term
-from rdflib.term import BNode, Node, URIRef, Literal, Genid
+from rdflib.term import BNode, Identifier, Node, URIRef, Literal, Genid
 from rdflib.paths import Path
 from rdflib.store import Store
 from rdflib.serializer import Serializer
@@ -313,7 +323,11 @@ class Graph(Node):
     """
 
     def __init__(
-        self, store="default", identifier=None, namespace_manager=None, base=None
+        self,
+        store: Union[Store, str] = "default",
+        identifier: Optional[Union[Node, str]] = None,
+        namespace_manager: Optional[NamespaceManager] = None,
+        base: Optional[str] = None,
     ):
         super(Graph, self).__init__()
         self.base = base
@@ -404,7 +418,7 @@ class Graph(Node):
         """
         return self.__store.close(commit_pending_transaction=commit_pending_transaction)
 
-    def add(self, triple):
+    def add(self, triple: Tuple[Node, Node, Node]):
         """Add a triple with self as context"""
         s, p, o = triple
         assert isinstance(s, Node), "Subject %s must be an rdflib term" % (s,)
@@ -413,7 +427,7 @@ class Graph(Node):
         self.__store.add((s, p, o), self, quoted=False)
         return self
 
-    def addN(self, quads):
+    def addN(self, quads: Iterable[Tuple[Node, Node, Node, "Graph"]]):
         """Add a sequence of triple with context"""
 
         self.__store.addN(
@@ -1019,10 +1033,10 @@ class Graph(Node):
     @overload
     def serialize(
         self,
-        *,
         destination: None = ...,
         format: str = ...,
         base: Optional[str] = ...,
+        *,
         encoding: str,
         **args,
     ) -> bytes:
@@ -1032,19 +1046,6 @@ class Graph(Node):
     @overload
     def serialize(
         self,
-        destination: None,
-        format: str,
-        base: Optional[str],
-        encoding: None,
-        **args,
-    ) -> str:
-        ...
-
-    # no destination and None keyword encoding
-    @overload
-    def serialize(
-        self,
-        *,
         destination: None = ...,
         format: str = ...,
         base: Optional[str] = ...,
@@ -1052,6 +1053,19 @@ class Graph(Node):
         **args,
     ) -> str:
         ...
+
+    # # no destination and None keyword encoding
+    # @overload
+    # def serialize(
+    #     self,
+    #     *,
+    #     destination: None = ...,
+    #     format: str = ...,
+    #     base: Optional[str] = ...,
+    #     encoding: None = None,
+    #     **args,
+    # ) -> str:
+    #     ...
 
     # non-none destination
     @overload
@@ -1069,7 +1083,7 @@ class Graph(Node):
     @overload
     def serialize(
         self,
-        destination: Union[str, BufferedIOBase, pathlib.PurePath, None] = None,
+        destination: Optional[Union[str, BufferedIOBase, pathlib.PurePath]] = None,
         format: str = "turtle",
         base: Optional[str] = None,
         encoding: Optional[str] = None,
@@ -1079,24 +1093,43 @@ class Graph(Node):
 
     def serialize(
         self,
-        destination: Union[str, BufferedIOBase, pathlib.PurePath, None] = None,
+        destination: Optional[Union[str, BufferedIOBase, pathlib.PurePath]] = None,
         format: str = "turtle",
         base: Optional[str] = None,
         encoding: Optional[str] = None,
-        **args,
+        **args: Any,
     ) -> Union[bytes, str, "Graph"]:
-        """Serialize the Graph to destination
+        """
+        Serialize the graph.
 
-        If destination is None serialize method returns the serialization as
-        bytes or string.
-
-        If encoding is None and destination is None, returns a string
-        If encoding is set, and Destination is None, returns bytes
-
-        Format defaults to turtle.
-
-        Format support can be extended with plugins,
-        but "xml", "n3", "turtle", "nt", "pretty-xml", "trix", "trig" and "nquads" are built in.
+        :param destination:
+           The destination to serialize the graph to. This can be a path as a
+           :class:`string` or :class:`~pathlib.PurePath` object, or it can be a
+           :class:`~io.BufferedIOBase` like object. If this parameter is not
+           supplied the serialized graph will be returned.
+        :type destination: Optional[Union[str, io.BufferedIOBase, pathlib.PurePath]]
+        :param format:
+           The format that the output should be written in. This value
+           references a :class:`~rdflib.serializer.Serializer` plugin. Format
+           support can be extended with plugins, but `"xml"`, `"n3"`,
+           `"turtle"`, `"nt"`, `"pretty-xml"`, `"trix"`, `"trig"` and `"nquads"`
+           are built in. Defaults to `"turtle"`.
+        :type format: str
+        :param base:
+           The base IRI for formats that support it. For the turtle format this
+           will be used as the `@base` directive.
+        :type base: Optional[str]
+        :param encoding: Encoding of output.
+        :type encoding: Optional[str]
+        :param **args:
+           Additional arguments to pass to the
+           :class:`~rdflib.serializer.Serializer` that will be used.
+        :type **args: Any
+        :return: The serialized graph if `destination` is `None`.
+        :rtype: :class:`bytes` if `destination` is `None` and `encoding` is not `None`.
+        :rtype: :class:`bytes` if `destination` is `None` and `encoding` is `None`.
+        :return: `self` (i.e. the :class:`~rdflib.graph.Graph` instance) if `destination` is not None.
+        :rtype: :class:`~rdflib.graph.Graph` if `destination` is not None.
         """
 
         # if base is not given as attribute use the base set for the graph
@@ -1149,10 +1182,10 @@ class Graph(Node):
         self,
         source=None,
         publicID=None,
-        format=None,
+        format: Optional[str] = None,
         location=None,
         file=None,
-        data=None,
+        data: Optional[Union[str, bytes, bytearray]] = None,
         **args,
     ):
         """
@@ -1293,7 +1326,7 @@ class Graph(Node):
         if none are given, the namespaces from the graph's namespace manager
         are used.
 
-        :returntype: rdflib.query.Result
+        :returntype: :class:`~rdflib.query.Result`
 
         """
 

@@ -174,6 +174,14 @@ def ctx_http_server(handler: Type[BaseHTTPRequestHandler]) -> Iterator[HTTPServe
 
 class GraphHelper:
     @classmethod
+    def add_triples(
+        cls, graph: Graph, triples: Iterable[Tuple[Node, Node, Node]]
+    ) -> Graph:
+        for triple in triples:
+            graph.add(triple)
+        return graph
+
+    @classmethod
     def triple_set(cls, graph: Graph) -> Set[Tuple[Node, Node, Node]]:
         return set(graph.triples((None, None, None)))
 
