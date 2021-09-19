@@ -1042,7 +1042,7 @@ class Graph(Node):
     ) -> bytes:
         ...
 
-    # no destination and None positional encoding
+    # no destination and None encoding
     @overload
     def serialize(
         self,
@@ -1054,20 +1054,7 @@ class Graph(Node):
     ) -> str:
         ...
 
-    # # no destination and None keyword encoding
-    # @overload
-    # def serialize(
-    #     self,
-    #     *,
-    #     destination: None = ...,
-    #     format: str = ...,
-    #     base: Optional[str] = ...,
-    #     encoding: None = None,
-    #     **args,
-    # ) -> str:
-    #     ...
-
-    # non-none destination
+    # non-None destination
     @overload
     def serialize(
         self,

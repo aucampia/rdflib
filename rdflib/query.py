@@ -430,7 +430,7 @@ class ResultParser(object):
 
     def parse(self, source, **kwargs):
         """return a Result object"""
-        pass  # abstract
+        raise NotImplementedError("A ResultParser must implement the parse method")
 
 
 class ResultSerializer(object):
@@ -439,4 +439,6 @@ class ResultSerializer(object):
 
     def serialize(self, stream, encoding="utf-8", **kwargs):
         """return a string properly serialized"""
-        pass  # abstract
+        raise NotImplementedError(
+            "A ResultSerializer must implement the serialize method"
+        )

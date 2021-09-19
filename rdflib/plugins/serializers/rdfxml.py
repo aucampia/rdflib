@@ -40,6 +40,7 @@ class XMLSerializer(Serializer):
             yield prefix, namespace
 
     def serialize(self, stream, base=None, encoding=None, **args):
+        print(f"encoding={encoding}")
         # if base is given here, use that, if not and a base is set for the graph use that
         if base is not None:
             self.base = base

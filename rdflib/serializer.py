@@ -24,12 +24,8 @@ class Serializer:
         self.base: Optional[str] = None
 
     def serialize(
-        self,
-        stream: BufferedIOBase,
-        base: Optional[str] = None,
-        encoding: Optional[str] = None,
-        **args
-    ):
+        self, stream: BufferedIOBase, base: Optional[str], encoding: str, **args
+    ) -> None:
         """Abstract method"""
         raise NotImplementedError("Serializer must implement the serialize method")
 
