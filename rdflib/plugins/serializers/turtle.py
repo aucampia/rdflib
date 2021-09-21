@@ -230,13 +230,15 @@ class TurtleSerializer(RecursiveSerializer):
     def serialize(
         self,
         stream: BufferedIOBase,
-        base: Optional[str],
-        encoding: Optional[str],
+        base: Optional[str] = None,
+        encoding: Optional[str] = None,
         spacious: Optional[bool] = None,
         **args
     ):
         self.reset()
-        self.stream = TextIOWrapper(stream, encoding, errors="replace", write_through=True)
+        self.stream = TextIOWrapper(
+            stream, encoding, errors="replace", write_through=True
+        )
         # self.encoding = encoding
         # if base is given here, use that, if not and a base is set for the graph use that
         if base is not None:
