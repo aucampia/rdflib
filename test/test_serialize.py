@@ -16,9 +16,6 @@ class TestSerialize(unittest.TestCase):
     def setUp(self) -> None:
 
         graph = Graph()
-        # subject = URIRef("example:subject")
-        # predicate = URIRef("example:predicate")
-        # object = URIRef("example:object")
         self.triple = (
             EG["subject"],
             EG["predicate"],
@@ -36,7 +33,6 @@ class TestSerialize(unittest.TestCase):
         self._tmpdir.cleanup()
 
     def check_data_string(self, data: str, format: str) -> None:
-        # print(f"format = {format}, data = {data}")
         self.assertIsInstance(data, str)
         graph_check = Graph()
         graph_check.parse(data=data, format=format)
@@ -44,10 +40,9 @@ class TestSerialize(unittest.TestCase):
 
     def check_data_bytes(self, data: bytes, format: str, encoding: str) -> None:
         self.assertIsInstance(data, bytes)
+
         # double check that encoding is right
-        print(f"format = {format}, encoding = {encoding}\ndata = {data!r}")
         data_str = data.decode(encoding)
-        print(f"data_str = {data_str!r}")
         graph_check = Graph()
         graph_check.parse(data=data_str, format=format)
         self.assertEqual(self.triple, next(iter(graph_check)))
@@ -64,8 +59,6 @@ class TestSerialize(unittest.TestCase):
         self.assertTrue(source.exists())
 
         # double check that encoding is right
-        data = source.read_bytes()
-        print(f"format = {format}, encoding = {encoding}\ndata = {data!r}")
         data_str = source.read_text(encoding=encoding)
         graph_check = Graph()
         graph_check.parse(data=data_str, format=format)
@@ -78,20 +71,6 @@ class TestSerialize(unittest.TestCase):
             graph_check.parse(source=source, format=format)
             self.assertEqual(self.triple, next(iter(graph_check)))
 
-    # def test_serialize_to_purepath(self) -> None:
-    #     format = "nt"
-    #     with TemporaryDirectory() as td:
-    #         tfpath = PurePath(td) / "out.nt"
-    #         self.graph.serialize(destination=tfpath, format=format)
-    #         self.check_file(tfpath, format)
-
-    # def test_serialize_to_path(self) -> None:
-    #     format = "nt"
-    #     with NamedTemporaryFile() as tf:
-    #         tfpath = Path(tf.name)
-    #         self.graph.serialize(destination=tfpath, format=format)
-    #         self.check_file(tfpath, format)
-
     def test_serialize_to_neturl(self) -> None:
         with self.assertRaises(ValueError) as raised:
             self.graph.serialize(destination="http://example.com/", format="nt")
@@ -101,16 +80,6 @@ class TestSerialize(unittest.TestCase):
         with self.assertRaises(PluginException) as raised:
             self.graph.serialize(destination="http://example.com/", format="badformat")
         self.assertIn("badformat", f"{raised.exception}")
-
-    # def test_serialize_to_fileurl(self) -> None:
-    #     format = "nt"
-    #     with TemporaryDirectory() as td:
-    #         tfpath = Path(td) / "out.nt"
-    #         tfurl = tfpath.as_uri()
-    #         self.assertRegex(tfurl, r"^file:")
-    #         self.assertFalse(tfpath.exists())
-    #         self.graph.serialize(destination=tfurl, format="nt")
-    #         self.check_file(tfpath, format)
 
     def test_str(self) -> None:
         formats = ["ttl", "nt", "xml", "nt"]
@@ -155,8 +124,7 @@ class TestSerialize(unittest.TestCase):
         outfile = self.tmpdir / "output"
 
         def filerefs(path: Path) -> Iterable[Union[str, PurePath]]:
-            # return [path, PurePath(path), f"{path}", path.as_uri()]
-            return [path]
+            return [path, PurePath(path), f"{path}", path.as_uri()]
 
         for (format, encoding, fileref) in itertools.chain(
             itertools.product(formats, encodings, filerefs(outfile)),
