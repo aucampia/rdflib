@@ -20,14 +20,14 @@ __all__ = ["Serializer"]
 class Serializer:
     def __init__(self, store):
         self.store = store
-        self.encoding: str = "UTF-8"
+        self.encoding: str = "utf-8"
         self.base: Optional[str] = None
 
     def serialize(
         self,
         stream: BufferedIOBase,
-        base: Optional[str],
-        encoding: Optional[str],
+        base: Optional[str] = None,
+        encoding: Optional[str] = None,
         **args
     ) -> None:
         """Abstract method"""

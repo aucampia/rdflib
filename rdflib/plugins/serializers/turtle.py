@@ -46,7 +46,6 @@ class RecursiveSerializer(Serializer):
     indentString = "  "
     roundtrip_prefixes = ()
     stream: TextIOBase
-    # encoding: str
 
     def __init__(self, store):
 
@@ -172,7 +171,6 @@ class RecursiveSerializer(Serializer):
 
     def write(self, text: str):
         """Write text in given encoding."""
-        # self.stream.write(text.encode(self.encoding, "replace"))
         self.stream.write(text)
 
 
@@ -233,7 +231,7 @@ class TurtleSerializer(RecursiveSerializer):
         self,
         stream: BufferedIOBase,
         base: Optional[str],
-        encoding: str,
+        encoding: Optional[str],
         spacious: Optional[bool] = None,
         **args
     ):
