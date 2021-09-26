@@ -6,6 +6,7 @@ from pathlib import Path
 import json
 import io
 import csv
+import inspect
 
 EG = Namespace("http://example.com/")
 
@@ -46,40 +47,45 @@ class TestSerializeTabular(unittest.TestCase):
         self._tmpdir.cleanup()
 
     def test_serialize_table_csv_str(self) -> None:
-        def check(data: str) -> None:
-            self.assertIsInstance(data, str)
-            data_io = io.StringIO(data)
-            data_reader = csv.reader(data_io, "unix")
-            data_rows = list(data_reader)
-            self.assertEqual(data_rows, self.result_table)
+        format = "csv"
 
-        check(self.result.serialize())
-        check(self.result.serialize(None))
-        check(self.result.serialize(None, None))
+        def check(data: str) -> None:
+            with self.subTest(caller=inspect.stack()[1]):
+                self.assertIsInstance(data, str)
+                data_io = io.StringIO(data)
+                data_reader = csv.reader(data_io, "unix")
+                data_rows = list(data_reader)
+                self.assertEqual(data_rows, self.result_table)
+
+        # check(self.result.serialize())
+        # check(self.result.serialize(None))
+        # check(self.result.serialize(None, None))
         check(self.result.serialize(None, None, None))
-        check(self.result.serialize(None, None, "csv"))
-        check(self.result.serialize(format="csv"))
-        check(self.result.serialize(destination=None))
-        check(self.result.serialize(destination=None, format="csv"))
-        check(self.result.serialize(destination=None, encoding=None, format="csv"))
+        check(self.result.serialize(None, None, format))
+        check(self.result.serialize(format=format))
+        # check(self.result.serialize(destination=None))
+        check(self.result.serialize(destination=None, format=format))
+        check(self.result.serialize(destination=None, encoding=None, format=format))
 
     def test_serialize_table_csv_bytes(self) -> None:
         encoding = "utf-8"
+        format = "csv"
 
         def check(data: bytes) -> None:
-            self.assertIsInstance(data, bytes)
-            data_str = data.decode(encoding)
-            data_io = io.StringIO(data_str)
-            data_reader = csv.reader(data_io, "unix")
-            data_rows = list(data_reader)
-            self.assertEqual(data_rows, self.result_table)
+            with self.subTest(caller=inspect.stack()[1]):
+                self.assertIsInstance(data, bytes)
+                data_str = data.decode(encoding)
+                data_io = io.StringIO(data_str)
+                data_reader = csv.reader(data_io, "unix")
+                data_rows = list(data_reader)
+                self.assertEqual(data_rows, self.result_table)
 
-        check(self.result.serialize(None, encoding))
-        check(self.result.serialize(None, encoding, None))
-        check(self.result.serialize(None, encoding, "csv"))
-        check(self.result.serialize(encoding=encoding, format="csv"))
-        check(self.result.serialize(destination=None, encoding=encoding))
-        check(self.result.serialize(destination=None, encoding=encoding, format="csv"))
+        # check(self.result.serialize(None, encoding))
+        # check(self.result.serialize(None, encoding, None))
+        check(self.result.serialize(None, encoding, format))
+        check(self.result.serialize(encoding=encoding, format=format))
+        # check(self.result.serialize(destination=None, encoding=encoding))
+        check(self.result.serialize(destination=None, encoding=encoding, format=format))
 
     def test_serialize_table_csv_file(self) -> None:
         outfile = self.tmpdir / "output.csv"
@@ -87,11 +93,12 @@ class TestSerializeTabular(unittest.TestCase):
         self.assertFalse(outfile.exists())
 
         def check(none: None) -> None:
-            self.assertTrue(outfile.exists())
-            with outfile.open("r") as file_io:
-                data_reader = csv.reader(file_io, "unix")
-                data_rows = list(data_reader)
-            self.assertEqual(data_rows, self.result_table)
+            with self.subTest(caller=inspect.stack()[1]):
+                self.assertTrue(outfile.exists())
+                with outfile.open("r") as file_io:
+                    data_reader = csv.reader(file_io, "unix")
+                    data_rows = list(data_reader)
+                self.assertEqual(data_rows, self.result_table)
 
         check(self.result.serialize(outfile))
 
@@ -101,46 +108,46 @@ class TestSerializeTabular(unittest.TestCase):
     def test_serialize_table_json(self) -> None:
         format = "json"
 
-        def check(returned: str) -> None:
-            obj = json.loads(returned)
-            self.assertEqual(
-                obj,
-                {
-                    "head": {"vars": ["subject", "predicate", "object"]},
-                    "results": {
-                        "bindings": [
-                            {
-                                "subject": {
-                                    "type": "uri",
-                                    "value": "http://example.com/e1",
-                                },
-                                "predicate": {
-                                    "type": "uri",
-                                    "value": "http://example.com/a1",
-                                },
-                                "object": {
-                                    "type": "uri",
-                                    "value": "http://example.com/e2",
-                                },
-                            },
-                            {
-                                "subject": {
-                                    "type": "uri",
-                                    "value": "http://example.com/e1",
-                                },
-                                "predicate": {
-                                    "type": "uri",
-                                    "value": "http://example.com/a1",
-                                },
-                                "object": {
-                                    "type": "uri",
-                                    "value": "http://example.com/e3",
-                                },
-                            },
-                        ]
+        json_data = {
+            "head": {"vars": ["subject", "predicate", "object"]},
+            "results": {
+                "bindings": [
+                    {
+                        "subject": {
+                            "type": "uri",
+                            "value": "http://example.com/e1",
+                        },
+                        "predicate": {
+                            "type": "uri",
+                            "value": "http://example.com/a1",
+                        },
+                        "object": {
+                            "type": "uri",
+                            "value": "http://example.com/e2",
+                        },
                     },
-                },
-            )
+                    {
+                        "subject": {
+                            "type": "uri",
+                            "value": "http://example.com/e1",
+                        },
+                        "predicate": {
+                            "type": "uri",
+                            "value": "http://example.com/a1",
+                        },
+                        "object": {
+                            "type": "uri",
+                            "value": "http://example.com/e3",
+                        },
+                    },
+                ]
+            },
+        }
+
+        def check(returned: str) -> None:
+            with self.subTest(caller=inspect.stack()[1]):
+                obj = json.loads(returned)
+                self.assertEqual(obj, json_data)
 
         check(self.result.serialize(format=format))
         check(self.result.serialize(None, format=format))

@@ -1,4 +1,5 @@
 from typing import (
+    IO,
     Any,
     Iterable,
     Optional,
@@ -15,7 +16,7 @@ import random
 from rdflib.namespace import Namespace, RDF
 from rdflib import plugin, exceptions, query, namespace
 import rdflib.term
-from rdflib.term import BNode, Identifier, Node, URIRef, Literal, Genid
+from rdflib.term import BNode, Node, URIRef, Literal, Genid
 from rdflib.paths import Path
 from rdflib.store import Store
 from rdflib.serializer import Serializer
@@ -31,8 +32,10 @@ import shutil
 import tempfile
 import pathlib
 
-from io import BytesIO, BufferedIOBase
+from io import BufferedIOBase, BytesIO
 from urllib.parse import urlparse
+
+from _types import BytesIOish
 
 assert Literal  # avoid warning
 assert Namespace  # avoid warning
@@ -1025,7 +1028,12 @@ class Graph(Node):
     # no destination and non-None positional encoding
     @overload
     def serialize(
-        self, destination: None, format: str, base: Optional[str], encoding: str, **args
+        self,
+        destination: None,
+        format: str,
+        base: Optional[str],
+        encoding: str,
+        **args,
     ) -> bytes:
         ...
 
@@ -1049,7 +1057,7 @@ class Graph(Node):
         destination: None = ...,
         format: str = ...,
         base: Optional[str] = ...,
-        encoding: None = None,
+        encoding: None = ...,
         **args,
     ) -> str:
         ...
@@ -1070,10 +1078,10 @@ class Graph(Node):
     @overload
     def serialize(
         self,
-        destination: Optional[Union[str, BufferedIOBase, pathlib.PurePath]] = None,
-        format: str = "turtle",
-        base: Optional[str] = None,
-        encoding: Optional[str] = None,
+        destination: Optional[Union[str, BufferedIOBase, pathlib.PurePath]] = ...,
+        format: str = ...,
+        base: Optional[str] = ...,
+        encoding: Optional[str] = ...,
         **args,
     ) -> Union[bytes, str, "Graph"]:
         ...
@@ -1091,10 +1099,10 @@ class Graph(Node):
 
         :param destination:
            The destination to serialize the graph to. This can be a path as a
-           :class:`string` or :class:`~pathlib.PurePath` object, or it can be a
-           :class:`~io.BufferedIOBase` like object. If this parameter is not
+           :class:`str` or :class:`~pathlib.PurePath` object, or it can be a
+           :class:`~typing.IO[bytes]` like object. If this parameter is not
            supplied the serialized graph will be returned.
-        :type destination: Optional[Union[str, io.BufferedIOBase, pathlib.PurePath]]
+        :type destination: Optional[Union[str, typing.IO[bytes], pathlib.PurePath]]
         :param format:
            The format that the output should be written in. This value
            references a :class:`~rdflib.serializer.Serializer` plugin. Format
@@ -1124,7 +1132,7 @@ class Graph(Node):
             base = self.base
 
         serializer = plugin.get(format, Serializer)(self)
-        stream: BufferedIOBase
+        stream: IO[bytes]
         if destination is None:
             stream = BytesIO()
             if encoding is None:
@@ -1134,7 +1142,7 @@ class Graph(Node):
                 serializer.serialize(stream, base=base, encoding=encoding, **args)
                 return stream.getvalue()
         if hasattr(destination, "write"):
-            stream = cast(BufferedIOBase, destination)
+            stream = cast(IO[bytes], destination)
             serializer.serialize(stream, base=base, encoding=encoding, **args)
         else:
             if isinstance(destination, pathlib.PurePath):

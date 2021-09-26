@@ -5,14 +5,15 @@ import tempfile
 import warnings
 import types
 import pathlib
-from typing import Optional, Union, cast, overload
+from typing import IO, Optional, Union, cast, overload
 
-from io import BytesIO, BufferedIOBase
+from io import BytesIO
 
 from urllib.parse import urlparse
 
 __all__ = ["Processor", "Result", "ResultParser", "ResultSerializer", "ResultException"]
 
+from _types import BytesIOish
 
 class Processor(object):
     """
@@ -257,7 +258,7 @@ class Result(object):
     @overload
     def serialize(
         self,
-        destination: Union[str, BufferedIOBase, pathlib.PurePath],
+        destination: Optional[Union[str, pathlib.PurePath, BytesIOish]] = ...,
         encoding: Optional[str] = ...,
         format: Optional[str] = ...,
         **args,
@@ -268,7 +269,7 @@ class Result(object):
     @overload
     def serialize(
         self,
-        destination: Union[str, BufferedIOBase, pathlib.PurePath, None] = None,
+        destination: Optional[Union[str, pathlib.PurePath, BytesIOish]] = ...,
         encoding: Optional[str] = None,
         format: Optional[str] = None,
         **args,
@@ -277,7 +278,7 @@ class Result(object):
 
     def serialize(
         self,
-        destination: Optional[Union[str, BufferedIOBase, pathlib.PurePath]] = None,
+        destination: Optional[Union[str, pathlib.PurePath, BytesIOish]] = None,
         encoding: Optional[str] = None,
         format: Optional[str] = None,
         **args,
@@ -287,10 +288,10 @@ class Result(object):
 
         :param destination:
            The destination to serialize the result to. This can be a path as a
-           :class:`string` or :class:`~pathlib.PurePath` object, or it can be a
-           :class:`~io.BufferedIOBase` like object. If this parameter is not
+           :class:`str` or :class:`~pathlib.PurePath` object, or it can be a
+           :class:`~typing.IO[bytes]` like object. If this parameter is not
            supplied the serialized result will be returned.
-        :type destination: Optional[Union[str, io.BufferedIOBase, pathlib.PurePath]]
+        :type destination: Optional[Union[str, typing.IO[bytes], pathlib.PurePath]]
         :param encoding: Encoding of output.
         :type encoding: Optional[str]
         :param format:
@@ -321,9 +322,9 @@ class Result(object):
         from rdflib import plugin
 
         if format is None:
-            format = "csv"
+            format = "txt"
         serializer = plugin.get(format, ResultSerializer)(self)
-        stream: BufferedIOBase
+        stream: IO[bytes]
         if destination is None:
             stream = BytesIO()
             if encoding is None:
@@ -337,7 +338,7 @@ class Result(object):
             # serializer.serialize(stream2, encoding=encoding, **args)
             # return streamb.getvalue()
         if hasattr(destination, "write"):
-            stream = cast(BufferedIOBase, destination)
+            stream = cast(IO[bytes], destination)
             serializer.serialize(stream, encoding=encoding, **args)
         else:
             if isinstance(destination, pathlib.PurePath):
@@ -430,15 +431,26 @@ class ResultParser(object):
 
     def parse(self, source, **kwargs):
         """return a Result object"""
-        raise NotImplementedError("A ResultParser must implement the parse method")
+        pass  # abstract
 
 
 class ResultSerializer(object):
     def __init__(self, result):
         self.result = result
 
-    def serialize(self, stream, encoding="utf-8", **kwargs):
+    @overload
+    def serialize(self, stream: IO[bytes], encoding: Optional[str] = ..., **kwargs):
+        ...
+
+    @overload
+    def serialize(self, stream: IO[str], encoding: None = ..., **kwargs):
+        ...
+
+    def serialize(
+        self,
+        stream: Union[IO[bytes], IO[str]],
+        encoding: Optional[str] = None,
+        **kwargs,
+    ):
         """return a string properly serialized"""
-        raise NotImplementedError(
-            "A ResultSerializer must implement the serialize method"
-        )
+        pass  # abstract

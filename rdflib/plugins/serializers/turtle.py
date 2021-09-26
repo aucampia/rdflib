@@ -10,8 +10,8 @@ from rdflib.term import BNode, Literal, URIRef
 from rdflib.exceptions import Error
 from rdflib.serializer import Serializer
 from rdflib.namespace import RDF, RDFS
-from io import BufferedIOBase, TextIOBase, TextIOWrapper
-from typing import Optional
+from io import BufferedIOBase, RawIOBase, TextIOBase, TextIOWrapper
+from typing import IO, Optional
 
 __all__ = ["RecursiveSerializer", "TurtleSerializer"]
 
@@ -45,7 +45,7 @@ class RecursiveSerializer(Serializer):
     maxDepth = 10
     indentString = "  "
     roundtrip_prefixes = ()
-    stream: TextIOBase
+    stream: IO[str]
 
     def __init__(self, store):
 
@@ -170,7 +170,7 @@ class RecursiveSerializer(Serializer):
         return (self.depth + modifier) * self.indentString
 
     def write(self, text: str):
-        """Write text in given encoding."""
+        """Write text"""
         self.stream.write(text)
 
 
@@ -186,7 +186,6 @@ class TurtleSerializer(RecursiveSerializer):
 
     short_name = "turtle"
     indentString = "    "
-    stream: TextIOBase
 
     def __init__(self, store):
         self._ns_rewrite = {}
@@ -236,10 +235,11 @@ class TurtleSerializer(RecursiveSerializer):
         **args
     ):
         self.reset()
+        if encoding is not None:
+            self.encoding = encoding
         self.stream = TextIOWrapper(
-            stream, encoding, errors="replace", write_through=True
+            stream, self.encoding, errors="replace", write_through=True
         )
-        # self.encoding = encoding
         # if base is given here, use that, if not and a base is set for the graph use that
         if base is not None:
             self.base = base
@@ -264,7 +264,6 @@ class TurtleSerializer(RecursiveSerializer):
                 self.write("\n")
 
         self.endDocument()
-        # stream.write("\n".encode(encoding))
         self.stream.write("\n")
         self.base = None
         self.stream.flush()

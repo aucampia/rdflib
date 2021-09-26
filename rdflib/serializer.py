@@ -10,9 +10,9 @@ See also rdflib.plugin
 
 """
 
-from typing import Optional
+from typing import IO, BinaryIO, Optional, Union
 from rdflib.term import URIRef
-from io import BufferedIOBase
+from io import BufferedIOBase, RawIOBase
 
 __all__ = ["Serializer"]
 
@@ -25,13 +25,12 @@ class Serializer:
 
     def serialize(
         self,
-        stream: BufferedIOBase,
+        stream: Union[RawIOBase, BufferedIOBase, IO[bytes]],
         base: Optional[str] = None,
         encoding: Optional[str] = None,
         **args
     ) -> None:
         """Abstract method"""
-        raise NotImplementedError("Serializer must implement the serialize method")
 
     def relativize(self, uri: str):
         base = self.base

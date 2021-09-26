@@ -9,6 +9,8 @@ http://www.w3.org/TR/sparql11-results-csv-tsv/
 
 import codecs
 import csv
+from io import BufferedIOBase, RawIOBase
+from typing import IO, Optional, Union, cast
 
 from rdflib import Variable, BNode, URIRef, Literal
 
@@ -61,7 +63,12 @@ class CSVResultSerializer(ResultSerializer):
         if result.type != "SELECT":
             raise Exception("CSVSerializer can only serialize select query results")
 
-    def serialize(self, stream, encoding="utf-8", **kwargs):
+    def serialize(
+        self,
+        stream: Union[IO[bytes], IO[str]],
+        encoding: Optional[str] = None,
+        **kwargs
+    ):
 
         # the serialiser writes bytes in the given encoding
         # in py3 csv.writer is unicode aware and writes STRINGS,
@@ -69,9 +76,10 @@ class CSVResultSerializer(ResultSerializer):
 
         import codecs
 
-        stream = codecs.getwriter(encoding)(stream)
+        if isinstance(stream, RawIOBase) or isinstance(stream, BufferedIOBase):  # type: ignore[unreachable]
+            stream = codecs.getwriter(encoding)(stream)  # type: ignore[unreachable]
 
-        out = csv.writer(stream, delimiter=self.delim)
+        out = csv.writer(cast(IO[str], stream), delimiter=self.delim)
 
         vs = [self.serializeTerm(v, encoding) for v in self.result.vars]
         out.writerow(vs)
