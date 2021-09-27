@@ -208,7 +208,7 @@ class Result(object):
 
         return parser.parse(source, content_type=content_type, **kwargs)
 
-    # no destination and non-None positional encoding
+    # None destination and non-None positional encoding
     @overload
     def serialize(
         self,
@@ -219,7 +219,7 @@ class Result(object):
     ) -> bytes:
         ...
 
-    # no destination and non-None keyword encoding
+    # None destination and non-None keyword encoding
     @overload
     def serialize(
         self,
@@ -231,7 +231,7 @@ class Result(object):
     ) -> bytes:
         ...
 
-    # no destination and None positional encoding
+    # None destination and None positional encoding
     @overload
     def serialize(
         self,
@@ -242,7 +242,7 @@ class Result(object):
     ) -> str:
         ...
 
-    # no destination and None keyword encoding
+    # None destination and None keyword encoding
     @overload
     def serialize(
         self,
@@ -258,7 +258,7 @@ class Result(object):
     @overload
     def serialize(
         self,
-        destination: Optional[Union[str, pathlib.PurePath, BytesIOish]] = ...,
+        destination: Union[str, pathlib.PurePath, IO[bytes]] = ...,
         encoding: Optional[str] = ...,
         format: Optional[str] = ...,
         **args,
@@ -269,16 +269,16 @@ class Result(object):
     @overload
     def serialize(
         self,
-        destination: Optional[Union[str, pathlib.PurePath, BytesIOish]] = ...,
-        encoding: Optional[str] = None,
-        format: Optional[str] = None,
+        destination: Optional[Union[str, pathlib.PurePath, IO[bytes]]] = ...,
+        encoding: Optional[str] = ...,
+        format: Optional[str] = ...,
         **args,
     ) -> Union[bytes, str, None]:
         ...
 
     def serialize(
         self,
-        destination: Optional[Union[str, pathlib.PurePath, BytesIOish]] = None,
+        destination: Optional[Union[str, pathlib.PurePath, IO[bytes]]] = None,
         encoding: Optional[str] = None,
         format: Optional[str] = None,
         **args,

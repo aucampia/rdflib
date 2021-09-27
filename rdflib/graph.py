@@ -1,6 +1,7 @@
 from typing import (
     IO,
     Any,
+    BinaryIO,
     Iterable,
     Optional,
     Union,
@@ -1066,7 +1067,7 @@ class Graph(Node):
     @overload
     def serialize(
         self,
-        destination: Union[str, BufferedIOBase, pathlib.PurePath],
+        destination: Union[str, pathlib.PurePath, IO[bytes]],
         format: str = ...,
         base: Optional[str] = ...,
         encoding: Optional[str] = ...,
@@ -1078,7 +1079,7 @@ class Graph(Node):
     @overload
     def serialize(
         self,
-        destination: Optional[Union[str, BufferedIOBase, pathlib.PurePath]] = ...,
+        destination: Optional[Union[str, pathlib.PurePath, IO[bytes]]] = ...,
         format: str = ...,
         base: Optional[str] = ...,
         encoding: Optional[str] = ...,
@@ -1088,7 +1089,7 @@ class Graph(Node):
 
     def serialize(
         self,
-        destination: Optional[Union[str, BufferedIOBase, pathlib.PurePath]] = None,
+        destination: Optional[Union[str, pathlib.PurePath, IO[bytes]]] = None,
         format: str = "turtle",
         base: Optional[str] = None,
         encoding: Optional[str] = None,
