@@ -189,7 +189,7 @@ class TestSerialize(unittest.TestCase):
             lhs_set, rhs_set = GraphHelper.quad_sets([lhs, rhs])
         else:
             lhs_set, rhs_set = GraphHelper.triple_sets([lhs, rhs])
-        print(f"lhs_set = {lhs_set}, rhs_set = {rhs_set}")
+        # print(f"lhs_set = {lhs_set}, rhs_set = {rhs_set}")
         self.assertTrue(len(lhs_set) > 0)
         self.assertTrue(len(rhs_set) > 0)
         self.assertEqual(lhs_set, rhs_set)
@@ -198,12 +198,9 @@ class TestSerialize(unittest.TestCase):
         self.assertIsInstance(data, str)
         # if format == "trig":
         #     logging.debug("format = %s, data = %s", format, data)
-        print("data = ", data)
         format_info = formats[format]
         graph_check = Formats.make_graph(format_info)
         graph_check.parse(data=data, format=format_info.deserializer_name)
-        print("check_graph = ", graph_check)
-        print("type(check_graph) = ", type(graph_check))
         self.assert_graphs_equal(self.graph, graph_check)
         # graph_quads, graph_check_quads = GraphHelper.quad_sets(
         #     [self.graph, graph_check]
@@ -240,14 +237,14 @@ class TestSerialize(unittest.TestCase):
         # double check that encoding is right
         data_str = source.read_text(encoding=encoding)
         graph_check = Formats.make_graph(format_info)
-        graph_check.parse(data=data_str, format=format)
+        graph_check.parse(data=data_str, format=format_info.deserializer_name)
         self.assert_graphs_equal(self.graph, graph_check)
 
         # actual check
         # TODO FIXME : This should work for all encodings, not just utf-8
         if encoding == "utf-8":
             graph_check = Formats.make_graph(format_info)
-            graph_check.parse(source=source, format=format)
+            graph_check.parse(source=source, format=format_info.deserializer_name)
             self.assert_graphs_equal(self.graph, graph_check)
 
     def test_serialize_to_neturl(self) -> None:
