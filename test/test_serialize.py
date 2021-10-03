@@ -79,6 +79,13 @@ class Formats(Dict[str, FormatInfo]):
                 yield format.serializer_name
 
     @classmethod
+    def make_graph(self, format_info) -> Graph:
+        if GraphType.QUAD in format_info.graph_types:
+            return ConjunctiveGraph()
+        else:
+            return Graph()
+
+    @classmethod
     def make(cls) -> "Formats":
         result = cls()
 
@@ -191,11 +198,7 @@ class TestSerialize(unittest.TestCase):
         # if format == "trig":
         #     logging.debug("format = %s, data = %s", format, data)
         format_info = formats[format]
-        graph_check: Graph
-        if GraphType.QUAD in format_info.graph_types:
-            graph_check = ConjunctiveGraph()
-        else:
-            graph_check = Graph(identifier=self.context)
+        graph_check = Formats.make_graph(format_info)
         graph_check.parse(data=data, format=format_info.deserializer_name)
         self.assert_graphs_equal(self.graph, graph_check)
         # graph_quads, graph_check_quads = GraphHelper.quad_sets(
@@ -210,11 +213,7 @@ class TestSerialize(unittest.TestCase):
         data_str = data.decode(encoding)
 
         format_info = formats[format]
-        graph_check: Graph
-        if GraphType.QUAD in format_info.graph_types:
-            graph_check = ConjunctiveGraph(identifier=self.context)
-        else:
-            graph_check = Graph(identifier=self.context)
+        graph_check = Formats.make_graph(format_info)
         graph_check.parse(data=data_str, format=format_info.deserializer_name)
 
         # graph_check.parse(data=data_str, format=format)
@@ -224,10 +223,7 @@ class TestSerialize(unittest.TestCase):
         # actual check
         # TODO FIXME : what about other encodings?
         if encoding == "utf-8":
-            if GraphType.QUAD in format_info.graph_types:
-                graph_check = ConjunctiveGraph(identifier=self.context)
-            else:
-                graph_check = Graph(identifier=self.context)
+            graph_check = Formats.make_graph(format_info)
             graph_check.parse(data=data, format=format_info.deserializer_name)
             self.assert_graphs_equal(self.graph, graph_check)
             # self.assertEqual(self.triple, next(iter(graph_check)))
@@ -235,19 +231,20 @@ class TestSerialize(unittest.TestCase):
     def check_file(self, source: PurePath, format: str, encoding: str) -> None:
         source = Path(source)
         self.assertTrue(source.exists())
+        format_info = formats[format]
 
         # double check that encoding is right
         data_str = source.read_text(encoding=encoding)
-        graph_check = Graph()
+        graph_check = Formats.make_graph(format_info)
         graph_check.parse(data=data_str, format=format)
-        self.assertEqual(self.triple, next(iter(graph_check)))
+        self.assert_graphs_equal(self.graph, graph_check)
 
         # actual check
         # TODO FIXME : This should work for all encodings, not just utf-8
         if encoding == "utf-8":
-            graph_check = Graph()
+            graph_check = Formats.make_graph(format_info)
             graph_check.parse(source=source, format=format)
-            self.assertEqual(self.triple, next(iter(graph_check)))
+            self.assert_graphs_equal(self.graph, graph_check)
 
     def test_serialize_to_neturl(self) -> None:
         with self.assertRaises(ValueError) as raised:
