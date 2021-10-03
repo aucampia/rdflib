@@ -188,15 +188,15 @@ class TestSerialize(unittest.TestCase):
         quad_set = GraphHelper.quad_set(self.graph)
         self.assertEqual(quad_set, {self.quad})
 
-    # def test_all_formats_specified(self) -> None:
-    #     plugins = get_unique_plugins(Serializer)
-    #     for plugin_refs in plugins.values():
-    #         names = {plugin_ref.name for plugin_ref in plugin_refs}
-    #         self.assertNotEqual(
-    #             names.intersection(self.formats.keys()),
-    #             set(),
-    #             f"serializers does not include any of {names}",
-    #         )
+    def test_all_formats_specified(self) -> None:
+        plugins = get_unique_plugins(Serializer)
+        for plugin_refs in plugins.values():
+            names = {plugin_ref.name for plugin_ref in plugin_refs}
+            self.assertNotEqual(
+                names.intersection(formats.keys()),
+                set(),
+                f"serializers does not include any of {names}",
+            )
 
     def assert_graphs_equal(self, lhs: Graph, rhs: Graph) -> None:
         lhs_has_quads = hasattr(lhs, "quads")
@@ -288,14 +288,6 @@ class TestSerialize(unittest.TestCase):
         self.assertIn("badformat", f"{raised.exception}")
 
     def test_str(self) -> None:
-        # formats = ["turtle", "nt", "xml", "nt"]
-        # formats = {"turtle", "nt", "xml", "nt", "pretty-xml"}
-        # formats = {"turtle", "nt", "xml", "nt", "pretty-xml"}
-        # formats = get_unique_plugin_names(Serializer)
-        # self.assertGreater(formats, 3)
-        # global formats
-        # formats = formats.select(graph_type=GraphType.TRIPLE)
-        # formats = {"xml"}
         test_formats = formats.keys()
         # test_formats = {"nquads"}
         # test_formats = {"xml", "turtle", "ntriples"}
