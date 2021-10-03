@@ -45,38 +45,6 @@ logging.basicConfig(
 EG = Namespace("http://example.com/")
 
 
-# def mkargs(*args: Any, **kwargs: Any) -> Tuple[Tuple[Any, ...], Dict[str, Any]]:
-#     return args, kwargs
-
-
-# class TestSerializeGraph(unittest.TestCase):
-#     def setUp(self) -> None:
-
-#         graph = Graph()
-#         self.triple = (
-#             EG["subject"],
-#             EG["predicate"],
-#             EG["object"],
-#         )
-#         graph.add(self.triple)
-#         self.graph = graph
-
-#         self._tmpdir = TemporaryDirectory()
-#         self.tmpdir = Path(self._tmpdir.name)
-
-#         return super().setUp()
-
-#     def tearDown(self) -> None:
-#         self._tmpdir.cleanup()
-
-#     def test_smoke(self) -> None:
-#         formats = [None, "json-ld", "turtle", "nt", "rdfxml", "n3"]
-#         # encodings = ["utf-8"]
-#         # destionations = [None, ]
-#         for format in formats:
-#             result = self.graph.serialize(format=format)
-
-
 class GraphType(str, enum.Enum):
     QUAD = enum.auto()
     TRIPLE = enum.auto()
@@ -126,7 +94,6 @@ class Formats(Dict[str, FormatInfo]):
 
         triple_only_formats = {
             "turtle",
-            "ntriples",
             "nt11",
             "xml",
             "n3",
@@ -150,6 +117,11 @@ class Formats(Dict[str, FormatInfo]):
             deserializer_name="xml",
             graph_types={GraphType.TRIPLE},
             encodings={"utf-8"},
+        )
+        result.add_format(
+            "ntriples",
+            graph_types={GraphType.TRIPLE},
+            encodings={"ascii"},
         )
 
         return result
@@ -216,8 +188,8 @@ class TestSerialize(unittest.TestCase):
 
     def check_data_string(self, data: str, format: str) -> None:
         self.assertIsInstance(data, str)
-        if format == "trig":
-            logging.debug("format = %s, data = %s", format, data)
+        # if format == "trig":
+        #     logging.debug("format = %s, data = %s", format, data)
         format_info = formats[format]
         graph_check: Graph
         if GraphType.QUAD in format_info.graph_types:
@@ -289,10 +261,7 @@ class TestSerialize(unittest.TestCase):
 
     def test_str(self) -> None:
         test_formats = formats.keys()
-        # test_formats = {"nquads"}
-        # test_formats = {"xml", "turtle", "ntriples"}
         for format in test_formats:
-            # for format in self.formats.keys():
 
             def check(data: str) -> None:
                 with self.subTest(format=format, caller=inspect.stack()[1]):
@@ -307,13 +276,14 @@ class TestSerialize(unittest.TestCase):
             check(self.graph.serialize(None, format=format, encoding=None))
 
     def test_bytes(self) -> None:
-        # formats = ["turtle"]
-        # encodings = ["utf-16", "utf-8", "latin-1"]
-        # TODO: FIXME: expand encodings
-
         for (format, encoding) in itertools.chain(
-            itertools.product(formats, encodings), [("nt", "ascii"), ("xml", "utf-8")]
+            *(
+                itertools.product({format_info.serializer_name}, format_info.encodings)
+                for format_info in formats.values()
+            )
         ):
+            print("format = ", format)
+            print("encoding = ", encoding)
 
             def check(data: bytes) -> None:
                 with self.subTest(
@@ -329,18 +299,31 @@ class TestSerialize(unittest.TestCase):
             check(self.graph.serialize(None, format=format, encoding=encoding))
 
     def test_file(self) -> None:
-        formats = ["turtle"]
-        encodings = ["utf-16", "utf-8", "latin-1"]
+        # formats = ["turtle"]
+        # encodings = ["utf-16", "utf-8", "latin-1"]
         outfile = self.tmpdir / "output"
 
         def filerefs(path: Path) -> Iterable[Union[str, PurePath]]:
             return [path, PurePath(path), f"{path}", path.as_uri()]
 
         for (format, encoding, fileref) in itertools.chain(
-            itertools.product(formats, encodings, filerefs(outfile)),
-            itertools.product(["nt"], ["ascii"], filerefs(outfile)),
-            itertools.product(["xml"], ["utf-8"], filerefs(outfile)),
+            *(
+                itertools.product(
+                    {format_info.serializer_name},
+                    format_info.encodings,
+                    filerefs(outfile),
+                )
+                for format_info in formats.values()
+            )
         ):
+            print("format = ", format)
+            print("encoding = ", encoding)
+            print("fileref = ", fileref)
+            # for (format, encoding, fileref) in itertools.chain(
+            #     itertools.product(formats, encodings, filerefs(outfile)),
+            #     itertools.product(["nt"], ["ascii"], filerefs(outfile)),
+            #     itertools.product(["xml"], ["utf-8"], filerefs(outfile)),
+            # ):
 
             def check(graph: Graph) -> None:
                 with self.subTest(
