@@ -1,3 +1,4 @@
+from typing import IO, Optional
 from rdflib.plugins.serializers.xmlwriter import XMLWriter
 
 from rdflib.namespace import Namespace, RDF, RDFS  # , split_uri
@@ -39,7 +40,13 @@ class XMLSerializer(Serializer):
         for prefix, namespace in bindings.items():
             yield prefix, namespace
 
-    def serialize(self, stream, base=None, encoding=None, **args):
+    def serialize(
+        self,
+        stream: IO[bytes],
+        base: Optional[str] = None,
+        encoding: Optional[str] = None,
+        **args
+    ):
         # if base is given here, use that, if not and a base is set for the graph use that
         if base is not None:
             self.base = base
@@ -158,7 +165,13 @@ class PrettyXMLSerializer(Serializer):
         super(PrettyXMLSerializer, self).__init__(store)
         self.forceRDFAbout = set()
 
-    def serialize(self, stream, base=None, encoding=None, **args):
+    def serialize(
+        self,
+        stream: IO[bytes],
+        base: Optional[str] = None,
+        encoding: Optional[str] = None,
+        **args
+    ):
         self.__serialized = {}
         store = self.store
         # if base is given here, use that, if not and a base is set for the graph use that

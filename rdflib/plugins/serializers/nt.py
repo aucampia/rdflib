@@ -3,6 +3,8 @@ N-Triples RDF graph serializer for RDFLib.
 See <http://www.w3.org/TR/rdf-testcases/#ntriples> for details about the
 format.
 """
+from typing import IO, Optional
+
 from rdflib.term import Literal
 from rdflib.serializer import Serializer
 
@@ -21,7 +23,13 @@ class NTSerializer(Serializer):
         Serializer.__init__(self, store)
         self.encoding = "ascii"  # n-triples are ascii encoded
 
-    def serialize(self, stream, base=None, encoding=None, **args):
+    def serialize(
+        self,
+        stream: IO[bytes],
+        base: Optional[str] = None,
+        encoding: Optional[str] = None,
+        **args
+    ):
         if base is not None:
             warnings.warn("NTSerializer does not support base.")
         if encoding is not None and encoding.lower() != self.encoding.lower():

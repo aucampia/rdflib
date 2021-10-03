@@ -4,6 +4,7 @@ See <http://www.w3.org/TR/trig/> for syntax specification.
 """
 
 from collections import defaultdict
+from typing import IO, Optional
 
 from rdflib.plugins.serializers.turtle import TurtleSerializer
 from rdflib.term import BNode
@@ -48,17 +49,15 @@ class TrigSerializer(TurtleSerializer):
         super(TrigSerializer, self).reset()
         self._contexts = {}
 
-    def serialize(self, stream, base=None, encoding=None, spacious=None, **args):
-        self.reset()
-        self.stream = stream
-        # if base is given here, use that, if not and a base is set for the graph use that
-        if base is not None:
-            self.base = base
-        elif self.store.base is not None:
-            self.base = self.store.base
-
-        if spacious is not None:
-            self._spacious = spacious
+    def serialize(
+        self,
+        stream: IO[bytes],
+        base: Optional[str] = None,
+        encoding: Optional[str] = None,
+        spacious=None,
+        **args
+    ):
+        self._serialize_init(stream, encoding)
 
         self.preprocess()
 
@@ -97,4 +96,4 @@ class TrigSerializer(TurtleSerializer):
             self.write("}\n")
 
         self.endDocument()
-        stream.write("\n".encode("latin-1"))
+        self.write("\n")

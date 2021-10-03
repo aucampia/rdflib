@@ -33,10 +33,8 @@ import shutil
 import tempfile
 import pathlib
 
-from io import BufferedIOBase, BytesIO
+from io import BytesIO
 from urllib.parse import urlparse
-
-from _types import BytesIOish
 
 assert Literal  # avoid warning
 assert Namespace  # avoid warning
@@ -339,7 +337,7 @@ class Graph(Node):
 
         if not isinstance(self.__identifier, Node):
             self.__identifier = URIRef(self.__identifier)
-
+        self.__store: Store
         if not isinstance(store, Store):
             # TODO: error handling
             self.__store = store = plugin.get(store, Store)()
@@ -350,10 +348,10 @@ class Graph(Node):
         self.formula_aware = False
         self.default_union = False
 
-    def __get_store(self):
+    def __get_store(self) -> Store:
         return self.__store
 
-    store = property(__get_store)  # read-only attr
+    store: Store = property(__get_store)  # read-only attr
 
     def __get_identifier(self):
         return self.__identifier
@@ -431,7 +429,7 @@ class Graph(Node):
         self.__store.add((s, p, o), self, quoted=False)
         return self
 
-    def addN(self, quads: Iterable[Tuple[Node, Node, Node, "Graph"]]):
+    def addN(self, quads: Iterable[Tuple[Node, Node, Node, Any]]):
         """Add a sequence of triple with context"""
 
         self.__store.addN(
@@ -1606,7 +1604,7 @@ class ConjunctiveGraph(Graph):
             return True
         return False
 
-    def add(self, triple_or_quad):
+    def add(self, triple_or_quad: Tuple[Node, Node, Node, Any]):
         """
         Add a triple or quad to the store.
 
@@ -1718,7 +1716,9 @@ class ConjunctiveGraph(Graph):
             else:
                 yield self.get_context(context)
 
-    def get_context(self, identifier, quoted=False, base=None):
+
+
+    def get_context(self, identifier, quoted: bool=False, base=None):
         """Return a context graph for the given identifier
 
         identifier must be a URIRef or BNode.
@@ -2006,7 +2006,7 @@ class QuotedGraph(Graph):
     def __init__(self, store, identifier):
         super(QuotedGraph, self).__init__(store, identifier)
 
-    def add(self, triple):
+    def add(self, triple: Tuple[Node, Node, Node]):
         """Add a triple with self as context"""
         s, p, o = triple
         assert isinstance(s, Node), "Subject %s must be an rdflib term" % (s,)
@@ -2163,10 +2163,10 @@ class ReadOnlyGraphAggregate(ConjunctiveGraph):
         for graph in self.graphs:
             graph.close()
 
-    def add(self, triple):
+    def add(self, triple: Triple):
         raise ModificationException()
 
-    def addN(self, quads):
+    def addN(self, quads: Quad):
         raise ModificationException()
 
     def remove(self, triple):

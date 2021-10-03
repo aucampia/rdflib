@@ -1,6 +1,11 @@
 from io import BytesIO
 import pickle
+from typing_extensions import TYPE_CHECKING
 from rdflib.events import Dispatcher, Event
+from typing import Tuple, Iterable, Any, Optional
+
+if TYPE_CHECKING:
+    from .term import Node
 
 """
 ============
@@ -172,7 +177,7 @@ class Store(object):
     def create(self, configuration):
         self.dispatcher.dispatch(StoreCreatedEvent(configuration=configuration))
 
-    def open(self, configuration, create=False):
+    def open(self, configuration, create: bool = False):
         """
         Opens the store specified by the configuration string. If
         create is True a store will be created if it does not already
@@ -204,7 +209,7 @@ class Store(object):
         pass
 
     # RDF APIs
-    def add(self, triple, context, quoted=False):
+    def add(self, triple: Tuple[Node, Node, Node], context: Optional[Any], quoted=False):
         """
         Adds the given statement to a specific context or to the model. The
         quoted argument is interpreted by formula-aware stores to indicate
@@ -215,7 +220,7 @@ class Store(object):
         """
         self.dispatcher.dispatch(TripleAddedEvent(triple=triple, context=context))
 
-    def addN(self, quads):
+    def addN(self, quads: Iterable[Tuple[Node, Node, Node, Any]]):
         """
         Adds each item in the list of statements to a specific context. The
         quoted argument is interpreted by formula-aware stores to indicate this

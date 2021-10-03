@@ -41,6 +41,7 @@ from rdflib.serializer import Serializer
 from rdflib.graph import Graph
 from rdflib.term import URIRef, Literal, BNode
 from rdflib.namespace import RDF, XSD
+from typing import IO, Optional
 
 from ..shared.jsonld.context import Context, UNDEF
 from ..shared.jsonld.util import json
@@ -56,7 +57,13 @@ class JsonLDSerializer(Serializer):
     def __init__(self, store):
         super(JsonLDSerializer, self).__init__(store)
 
-    def serialize(self, stream, base=None, encoding=None, **kwargs):
+    def serialize(
+        self,
+        stream: IO[bytes],
+        base: Optional[str] = None,
+        encoding: Optional[str] = None,
+        **kwargs
+    ):
         # TODO: docstring w. args and return value
         encoding = encoding or "utf-8"
         if encoding not in ("utf-8", "utf-16"):

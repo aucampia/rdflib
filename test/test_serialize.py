@@ -1,3 +1,8 @@
+from rdflib.graph import ConjunctiveGraph
+import tempfile
+import os
+import sys
+from test.testutils import get_unique_plugin_names, get_unique_plugins
 from rdflib.namespace import Namespace
 import unittest
 from rdflib import Graph, URIRef
@@ -5,15 +10,123 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from pathlib import Path, PurePath
 import sys
 import itertools
-from typing import Iterable, Tuple, Union
+from typing import Any, Dict, Iterable, List, NamedTuple, Optional, Set, Tuple, Union
 import inspect
 from rdflib.plugin import PluginException
+from rdflib.serializer import Serializer
+import enum
+
+import logging
+
+logging.basicConfig(
+    level=os.environ.get("PYLOGGING_LEVEL", logging.DEBUG),
+    stream=sys.stderr,
+    datefmt="%Y-%m-%dT%H:%M:%S",
+    format=(
+        "%(asctime)s.%(msecs)03d %(process)d %(thread)d %(levelno)03d:%(levelname)-8s "
+        "%(name)-12s %(module)s:%(lineno)s:%(funcName)s %(message)s"
+    ),
+)
+
 
 EG = Namespace("http://example.com/")
 
 
+# def mkargs(*args: Any, **kwargs: Any) -> Tuple[Tuple[Any, ...], Dict[str, Any]]:
+#     return args, kwargs
+
+
+# class TestSerializeGraph(unittest.TestCase):
+#     def setUp(self) -> None:
+
+#         graph = Graph()
+#         self.triple = (
+#             EG["subject"],
+#             EG["predicate"],
+#             EG["object"],
+#         )
+#         graph.add(self.triple)
+#         self.graph = graph
+
+#         self._tmpdir = TemporaryDirectory()
+#         self.tmpdir = Path(self._tmpdir.name)
+
+#         return super().setUp()
+
+#     def tearDown(self) -> None:
+#         self._tmpdir.cleanup()
+
+#     def test_smoke(self) -> None:
+#         formats = [None, "json-ld", "turtle", "nt", "rdfxml", "n3"]
+#         # encodings = ["utf-8"]
+#         # destionations = [None, ]
+#         for format in formats:
+#             result = self.graph.serialize(format=format)
+
+
+class GraphType(str, enum.Enum):
+    QUAD = enum.auto()
+    TRIPLE = enum.auto()
+
+
+class FormatInfo(NamedTuple):
+    serializer_name: str
+    deserializer_name: str
+    supported_graph_types: Set[GraphType]
+
+
+class Formats(Dict[str, FormatInfo]):
+    def add_format(
+        self,
+        serializer_name: str,
+        *,
+        deserializer_name: Optional[str] = None,
+        supported_graph_types: Optional[Set[GraphType]] = None,
+    ) -> None:
+        self[serializer_name] = FormatInfo(
+            serializer_name,
+            serializer_name if deserializer_name is None else deserializer_name,
+            {GraphType.QUAD, GraphType.TRIPLE}
+            if supported_graph_types is None
+            else supported_graph_types,
+        )
+
+    def select(self, *, graph_type: GraphType) -> Iterable[str]:
+        for format in self.values():
+            if graph_type in format.supported_graph_types:
+                yield format.serializer_name
+
+
 class TestSerialize(unittest.TestCase):
+    formats: Formats
+
+    @classmethod
+    def setUpClass(cls) -> None:
+        normal_formats = {
+            "xml",
+            "n3",
+            "turtle",
+            "ntriples",
+            "nt11",
+            "json-ld",
+            "nquads",
+            "trig",
+        }
+        cls.formats = Formats()
+        for format in normal_formats:
+            cls.formats.add_format(format)
+        quad_only_formats = {
+            "nquads",
+            "trig",
+            "trix",
+        }
+        for format in quad_only_formats:
+            cls.formats.add_format(format, supported_graph_types={GraphType.QUAD})
+        cls.formats.add_format("pretty-xml", deserializer_name="xml")
+
     def setUp(self) -> None:
+
+        conjunctive_graph = ConjunctiveGraph()
 
         graph = Graph()
         self.triple = (
@@ -32,10 +145,22 @@ class TestSerialize(unittest.TestCase):
     def tearDown(self) -> None:
         self._tmpdir.cleanup()
 
+    # def test_all_formats_specified(self) -> None:
+    #     plugins = get_unique_plugins(Serializer)
+    #     for plugin_refs in plugins.values():
+    #         names = {plugin_ref.name for plugin_ref in plugin_refs}
+    #         self.assertNotEqual(
+    #             names.intersection(self.formats.keys()),
+    #             set(),
+    #             f"serializers does not include any of {names}",
+    #         )
+
     def check_data_string(self, data: str, format: str) -> None:
         self.assertIsInstance(data, str)
+        if format == "trig":
+            logging.debug("format = %s, data = %s", format, data)
         graph_check = Graph()
-        graph_check.parse(data=data, format=format)
+        graph_check.parse(data=data, format=self.formats[format].deserializer_name)
         self.assertEqual(self.triple, next(iter(graph_check)))
 
     def check_data_bytes(self, data: bytes, format: str, encoding: str) -> None:
@@ -51,7 +176,7 @@ class TestSerialize(unittest.TestCase):
         # TODO FIXME : This should work for all encodings, not just utf-8
         if encoding == "utf-8":
             graph_check = Graph()
-            graph_check.parse(data=data, format=format)
+            graph_check.parse(data=data, format=self.formats[format].deserializer_name)
             self.assertEqual(self.triple, next(iter(graph_check)))
 
     def check_file(self, source: PurePath, format: str, encoding: str) -> None:
@@ -82,14 +207,18 @@ class TestSerialize(unittest.TestCase):
         self.assertIn("badformat", f"{raised.exception}")
 
     def test_str(self) -> None:
-        formats = ["ttl", "nt", "xml", "nt"]
-        for format in formats:
+        # formats = ["turtle", "nt", "xml", "nt"]
+        # formats = {"turtle", "nt", "xml", "nt", "pretty-xml"}
+        # formats = {"turtle", "nt", "xml", "nt", "pretty-xml"}
+        # formats = get_unique_plugin_names(Serializer)
+        # self.assertGreater(formats, 3)
+        for format in self.formats.select(graph_type=GraphType.TRIPLE):
 
             def check(data: str) -> None:
                 with self.subTest(format=format, caller=inspect.stack()[1]):
                     self.check_data_string(data, format=format)
 
-            if format == "ttl":
+            if format == "turtle":
                 check(self.graph.serialize())
             check(self.graph.serialize(None, format))
             check(self.graph.serialize(None, format, encoding=None))
@@ -98,7 +227,7 @@ class TestSerialize(unittest.TestCase):
             check(self.graph.serialize(None, format=format, encoding=None))
 
     def test_bytes(self) -> None:
-        formats = ["ttl"]
+        formats = ["turtle"]
         encodings = ["utf-16", "utf-8", "latin-1"]
         # TODO: FIXME: XML with non utf-8 encodings
         for (format, encoding) in itertools.chain(
@@ -111,7 +240,7 @@ class TestSerialize(unittest.TestCase):
                 ):
                     self.check_data_bytes(data, format=format, encoding=encoding)
 
-            if format == "ttl":
+            if format == "turtle":
                 check(self.graph.serialize(encoding=encoding))
             check(self.graph.serialize(None, format, encoding=encoding))
             check(self.graph.serialize(None, format, None, encoding=encoding))
@@ -119,7 +248,7 @@ class TestSerialize(unittest.TestCase):
             check(self.graph.serialize(None, format=format, encoding=encoding))
 
     def test_file(self) -> None:
-        formats = ["ttl"]
+        formats = ["turtle"]
         encodings = ["utf-16", "utf-8", "latin-1"]
         outfile = self.tmpdir / "output"
 
@@ -141,10 +270,10 @@ class TestSerialize(unittest.TestCase):
                 ):
                     self.check_file(outfile, format, encoding)
 
-            if (format, encoding) == ("ttl", "utf-8"):
+            if (format, encoding) == ("turtle", "utf-8"):
                 check(self.graph.serialize(fileref))
                 check(self.graph.serialize(fileref, encoding=None))
-            if format == "ttl":
+            if format == "turtle":
                 check(self.graph.serialize(fileref, encoding=encoding))
             if encoding == sys.getdefaultencoding():
                 check(self.graph.serialize(fileref, format))

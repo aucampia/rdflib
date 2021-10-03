@@ -1,4 +1,5 @@
 from __future__ import print_function
+from rdflib.plugin import Plugin
 
 import os
 import sys
@@ -9,6 +10,7 @@ import random
 
 from contextlib import AbstractContextManager, contextmanager
 from typing import (
+    Generic,
     Iterable,
     List,
     Optional,
@@ -37,6 +39,7 @@ from rdflib.term import Node
 from unittest.mock import MagicMock, Mock
 from urllib.error import HTTPError
 from urllib.request import urlopen
+import rdflib.plugin
 
 if TYPE_CHECKING:
     import typing_extensions as te
@@ -46,6 +49,32 @@ if TYPE_CHECKING:
 # rdflib.graphutils.isomorphic and use instead.
 from test import TEST_DIR
 from test.earl import add_test, report
+
+PluginT = TypeVar("PluginT")
+
+
+class PluginWithNames(NamedTuple, Generic[PluginT]):
+    plugin: Plugin[PluginT]
+    names: Set[str]
+
+
+def get_unique_plugins(
+    type: Type[PluginT],
+) -> Dict[Type[PluginT], Set[Plugin[PluginT]]]:
+    result: Dict[Type[PluginT], Set[Plugin[PluginT]]] = {}
+    for plugin in rdflib.plugin.plugins(None, type):
+        cls = plugin.getClass()
+        plugins = result.setdefault(cls, set())
+        plugins.add(plugin)
+    return result
+
+
+def get_unique_plugin_names(type: Type[PluginT]) -> Set[str]:
+    result: Set[str] = set()
+    unique_plugins = get_unique_plugins(type)
+    for type, plugin_set in unique_plugins.items():
+        result.add(next(iter(plugin_set)).name)
+    return result
 
 
 def crapCompare(g1, g2):

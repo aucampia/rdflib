@@ -1,3 +1,6 @@
+import os
+import sys
+from typing import IO, Optional
 from rdflib.serializer import Serializer
 from rdflib.plugins.serializers.xmlwriter import XMLWriter
 
@@ -22,7 +25,13 @@ class TriXSerializer(Serializer):
                 "TriX serialization only makes sense for context-aware stores"
             )
 
-    def serialize(self, stream, base=None, encoding=None, **args):
+    def serialize(
+        self,
+        stream: IO[bytes],
+        base: Optional[str] = None,
+        encoding: Optional[str] = None,
+        **args
+    ):
 
         nm = self.store.namespace_manager
 

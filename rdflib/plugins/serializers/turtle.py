@@ -226,14 +226,13 @@ class TurtleSerializer(RecursiveSerializer):
         self._started = False
         self._ns_rewrite = {}
 
-    def serialize(
+    def _serialize_init(
         self,
-        stream: BufferedIOBase,
+        stream: IO[bytes],
         base: Optional[str] = None,
         encoding: Optional[str] = None,
         spacious: Optional[bool] = None,
-        **args
-    ):
+    ) -> None:
         self.reset()
         if encoding is not None:
             self.encoding = encoding
@@ -245,9 +244,18 @@ class TurtleSerializer(RecursiveSerializer):
             self.base = base
         elif self.store.base is not None:
             self.base = self.store.base
-
         if spacious is not None:
             self._spacious = spacious
+
+    def serialize(
+        self,
+        stream: IO[bytes],
+        base: Optional[str] = None,
+        encoding: Optional[str] = None,
+        spacious: Optional[bool] = None,
+        **args
+    ):
+        self._serialize_init(stream, base, encoding, spacious)
 
         self.preprocess()
         subjects_list = self.orderSubjects()

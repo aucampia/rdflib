@@ -1,3 +1,4 @@
+from typing import IO, Optional
 import warnings
 
 from rdflib.term import Literal
@@ -17,7 +18,13 @@ class NQuadsSerializer(Serializer):
 
         super(NQuadsSerializer, self).__init__(store)
 
-    def serialize(self, stream, base=None, encoding=None, **args):
+    def serialize(
+        self,
+        stream: IO[bytes],
+        base: Optional[str] = None,
+        encoding: Optional[str] = None,
+        **args
+    ):
         if base is not None:
             warnings.warn("NQuadsSerializer does not support base.")
         if encoding is not None and encoding.lower() != self.encoding.lower():

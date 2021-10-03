@@ -5,7 +5,7 @@ import tempfile
 import warnings
 import types
 import pathlib
-from typing import IO, Optional, Union, cast, overload
+from typing import IO, TYPE_CHECKING, Optional, TextIO, Union, cast, overload
 
 from io import BytesIO
 
@@ -13,7 +13,9 @@ from urllib.parse import urlparse
 
 __all__ = ["Processor", "Result", "ResultParser", "ResultSerializer", "ResultException"]
 
-from _types import BytesIOish
+if TYPE_CHECKING:
+    from .graph import Graph
+
 
 class Processor(object):
     """
@@ -172,8 +174,8 @@ class Result(object):
         self.vars = None
         self._bindings = None
         self._genbindings = None
-        self.askAnswer = None
-        self.graph = None
+        self.askAnswer: bool = None
+        self.graph: "Graph" = None
 
     def _get_bindings(self):
         if self._genbindings:
@@ -258,8 +260,19 @@ class Result(object):
     @overload
     def serialize(
         self,
-        destination: Union[str, pathlib.PurePath, IO[bytes]] = ...,
+        destination: Union[str, pathlib.PurePath, IO[bytes]],
         encoding: Optional[str] = ...,
+        format: Optional[str] = ...,
+        **args,
+    ) -> None:
+        ...
+
+    # non-none destination
+    @overload
+    def serialize(
+        self,
+        destination: Union[TextIO],
+        encoding: None = ...,
         format: Optional[str] = ...,
         **args,
     ) -> None:
@@ -269,16 +282,17 @@ class Result(object):
     @overload
     def serialize(
         self,
-        destination: Optional[Union[str, pathlib.PurePath, IO[bytes]]] = ...,
+        destination: Optional[Union[str, pathlib.PurePath, IO[bytes], TextIO]] = ...,
         encoding: Optional[str] = ...,
         format: Optional[str] = ...,
         **args,
     ) -> Union[bytes, str, None]:
         ...
 
+    # NOTE: Using TextIO as opposed to IO[str] because I want to be able to use buffer.
     def serialize(
         self,
-        destination: Optional[Union[str, pathlib.PurePath, IO[bytes]]] = None,
+        destination: Optional[Union[str, pathlib.PurePath, IO[bytes], TextIO]] = None,
         encoding: Optional[str] = None,
         format: Optional[str] = None,
         **args,
@@ -314,6 +328,12 @@ class Result(object):
         :type format: str
         """
         if self.type in ("CONSTRUCT", "DESCRIBE"):
+            if (
+                destination is not None
+                and hasattr(destination, "encoding")
+                and hasattr(destination, "buffer")
+            ):
+                destination = cast(TextIO, destination).buffer
             return self.graph.serialize(
                 destination, encoding=encoding, format=format, **args
             )

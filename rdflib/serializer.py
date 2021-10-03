@@ -12,7 +12,6 @@ See also rdflib.plugin
 
 from typing import IO, BinaryIO, Optional, Union
 from rdflib.term import URIRef
-from io import BufferedIOBase, RawIOBase
 
 __all__ = ["Serializer"]
 
@@ -25,7 +24,7 @@ class Serializer:
 
     def serialize(
         self,
-        stream: Union[RawIOBase, BufferedIOBase, IO[bytes]],
+        stream: IO[bytes],
         base: Optional[str] = None,
         encoding: Optional[str] = None,
         **args
