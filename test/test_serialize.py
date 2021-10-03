@@ -79,7 +79,7 @@ class Formats(Dict[str, FormatInfo]):
                 yield format.serializer_name
 
     @classmethod
-    def make_graph(self, format_info) -> Graph:
+    def make_graph(self, format_info: FormatInfo) -> Graph:
         if GraphType.QUAD in format_info.graph_types:
             return ConjunctiveGraph()
         else:
@@ -104,7 +104,6 @@ class Formats(Dict[str, FormatInfo]):
             "nt11",
             "xml",
             "n3",
-            "json-ld",
         }
         for format in triple_only_formats:
             result.add_format(
@@ -115,6 +114,7 @@ class Formats(Dict[str, FormatInfo]):
             "nquads",
             "trig",
             "trix",
+            "json-ld",
         }
         for format in quad_only_formats:
             result.add_format(format, graph_types={GraphType.QUAD}, encodings={"utf-8"})
@@ -189,6 +189,7 @@ class TestSerialize(unittest.TestCase):
             lhs_set, rhs_set = GraphHelper.quad_sets([lhs, rhs])
         else:
             lhs_set, rhs_set = GraphHelper.triple_sets([lhs, rhs])
+        print(f"lhs_set = {lhs_set}, rhs_set = {rhs_set}")
         self.assertTrue(len(lhs_set) > 0)
         self.assertTrue(len(rhs_set) > 0)
         self.assertEqual(lhs_set, rhs_set)
@@ -197,9 +198,12 @@ class TestSerialize(unittest.TestCase):
         self.assertIsInstance(data, str)
         # if format == "trig":
         #     logging.debug("format = %s, data = %s", format, data)
+        print("data = ", data)
         format_info = formats[format]
         graph_check = Formats.make_graph(format_info)
         graph_check.parse(data=data, format=format_info.deserializer_name)
+        print("check_graph = ", graph_check)
+        print("type(check_graph) = ", type(graph_check))
         self.assert_graphs_equal(self.graph, graph_check)
         # graph_quads, graph_check_quads = GraphHelper.quad_sets(
         #     [self.graph, graph_check]
@@ -258,6 +262,7 @@ class TestSerialize(unittest.TestCase):
 
     def test_str(self) -> None:
         test_formats = formats.keys()
+        # test_formats = {"json-ld"}
         for format in test_formats:
 
             def check(data: str) -> None:
