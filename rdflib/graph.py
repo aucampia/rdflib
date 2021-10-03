@@ -333,10 +333,11 @@ class Graph(Node):
     ):
         super(Graph, self).__init__()
         self.base = base
-        self.__identifier = identifier or BNode()
+        self.__identifier: Node
+        self.__identifier = identifier or BNode()  # type: ignore[assignment]
 
         if not isinstance(self.__identifier, Node):
-            self.__identifier = URIRef(self.__identifier)
+            self.__identifier = URIRef(self.__identifier)  # type: ignore[unreachable]
         self.__store: Store
         if not isinstance(store, Store):
             # TODO: error handling
@@ -351,12 +352,16 @@ class Graph(Node):
     def __get_store(self) -> Store:
         return self.__store
 
-    store: Store = property(__get_store)  # read-only attr
+    @property
+    def store(self) -> Store:  # read-only attr
+        return self.__get_store()
 
-    def __get_identifier(self):
+    def __get_identifier(self) -> Node:
         return self.__identifier
 
-    identifier = property(__get_identifier)  # read-only attr
+    @property
+    def identifier(self) -> Node:  # read-only attr
+        return self.__get_identifier()
 
     def _get_namespace_manager(self):
         if self.__namespace_manager is None:
@@ -450,7 +455,9 @@ class Graph(Node):
         self.__store.remove(triple, context=self)
         return self
 
-    def triples(self, triple):
+    def triples(
+        self, triple: Tuple[Optional[Node], Union[None, Path, Node], Optional[Node]]
+    ):
         """Generator over the triple store
 
         Returns triples that match the given triple pattern. If triple pattern
@@ -1564,7 +1571,12 @@ class ConjunctiveGraph(Graph):
     All queries are carried out against the union of all graphs.
     """
 
-    def __init__(self, store="default", identifier=None, default_graph_base=None):
+    def __init__(
+        self,
+        store: Union[Store, str] = "default",
+        identifier: Optional[Union[Node, str]] = None,
+        default_graph_base: Optional[str] = None,
+    ):
         super(ConjunctiveGraph, self).__init__(store, identifier=identifier)
         assert self.store.context_aware, (
             "ConjunctiveGraph must be backed by" " a context aware store."
@@ -1582,7 +1594,31 @@ class ConjunctiveGraph(Graph):
         )
         return pattern % self.store.__class__.__name__
 
-    def _spoc(self, triple_or_quad, default=False):
+    @overload
+    def _spoc(
+        self,
+        triple_or_quad: Union[
+            Tuple[Node, Node, Node, Optional[Any]], Tuple[Node, Node, Node]
+        ],
+        default: bool = False,
+    ) -> Tuple[Node, Node, Node, Optional[Graph]]:
+        ...
+
+    @overload
+    def _spoc(
+        self,
+        triple_or_quad: None,
+        default: bool = False,
+    ) -> Tuple[None, None, None, Optional[Graph]]:
+        ...
+
+    def _spoc(
+        self,
+        triple_or_quad: Optional[
+            Union[Tuple[Node, Node, Node, Optional[Any]], Tuple[Node, Node, Node]]
+        ],
+        default: bool = False,
+    ) -> Tuple[Optional[Node], Optional[Node], Optional[Node], Optional[Graph]]:
         """
         helper method for having methods that support
         either triples or quads
@@ -1591,9 +1627,9 @@ class ConjunctiveGraph(Graph):
             return (None, None, None, self.default_context if default else None)
         if len(triple_or_quad) == 3:
             c = self.default_context if default else None
-            (s, p, o) = triple_or_quad
+            (s, p, o) = triple_or_quad  # type: ignore[misc]
         elif len(triple_or_quad) == 4:
-            (s, p, o, c) = triple_or_quad
+            (s, p, o, c) = triple_or_quad  # type: ignore[misc]
             c = self._graph(c)
         return s, p, o, c
 
@@ -1604,7 +1640,7 @@ class ConjunctiveGraph(Graph):
             return True
         return False
 
-    def add(self, triple_or_quad: Tuple[Node, Node, Node, Any]):
+    def add(self, triple_or_quad: Union[Tuple[Node, Node, Node, Optional[Any]], Tuple[Node, Node, Node]]) -> "ConjunctiveGraph":  # type: ignore[override]
         """
         Add a triple or quad to the store.
 
@@ -1618,7 +1654,15 @@ class ConjunctiveGraph(Graph):
         self.store.add((s, p, o), context=c, quoted=False)
         return self
 
-    def _graph(self, c):
+    @overload
+    def _graph(self, c: Union[Graph, Node, str]) -> Graph:
+        ...
+
+    @overload
+    def _graph(self, c: None) -> None:
+        ...
+
+    def _graph(self, c: Optional[Union[Graph, Node, str]]) -> Optional[Graph]:
         if c is None:
             return None
         if not isinstance(c, Graph):
@@ -1626,7 +1670,7 @@ class ConjunctiveGraph(Graph):
         else:
             return c
 
-    def addN(self, quads):
+    def addN(self, quads: Iterable[Tuple[Node, Node, Node, Any]]):
         """Add a sequence of triples with context"""
 
         self.store.addN(
@@ -1716,15 +1760,19 @@ class ConjunctiveGraph(Graph):
             else:
                 yield self.get_context(context)
 
-
-
-    def get_context(self, identifier, quoted: bool=False, base=None):
+    def get_context(
+        self,
+        identifier: Optional[Union[Node, str]],
+        quoted: bool = False,
+        base: Optional[str] = None,
+    ) -> Graph:
         """Return a context graph for the given identifier
 
         identifier must be a URIRef or BNode.
         """
+        # TODO: FIXME - why is ConjunctiveGraph passed as namespace_manager?
         return Graph(
-            store=self.store, identifier=identifier, namespace_manager=self, base=base
+            store=self.store, identifier=identifier, namespace_manager=self, base=base  # type: ignore[arg-type]
         )
 
     def remove_context(self, context):
@@ -1776,6 +1824,7 @@ class ConjunctiveGraph(Graph):
         context = Graph(store=self.store, identifier=g_id)
         context.remove((None, None, None))  # hmm ?
         context.parse(source, publicID=publicID, format=format, **args)
+        # TODO: FIXME: This should not return context, but self.
         return context
 
     def __reduce__(self):
@@ -2016,7 +2065,7 @@ class QuotedGraph(Graph):
         self.store.add((s, p, o), self, quoted=True)
         return self
 
-    def addN(self, quads):
+    def addN(self, quads: Tuple[Node, Node, Node, Any]) -> "QuotedGraph":  # type: ignore[override]
         """Add a sequence of triple with context"""
 
         self.store.addN(
@@ -2163,10 +2212,10 @@ class ReadOnlyGraphAggregate(ConjunctiveGraph):
         for graph in self.graphs:
             graph.close()
 
-    def add(self, triple: Triple):
+    def add(self, triple):
         raise ModificationException()
 
-    def addN(self, quads: Quad):
+    def addN(self, quads):
         raise ModificationException()
 
     def remove(self, triple):
@@ -2290,7 +2339,7 @@ class BatchAddGraph(object):
 
     """
 
-    def __init__(self, graph, batch_size=1000, batch_addn=False):
+    def __init__(self, graph: Graph, batch_size: int = 1000, batch_addn: bool = False):
         if not batch_size or batch_size < 2:
             raise ValueError("batch_size must be a positive number")
         self.graph = graph
@@ -2307,7 +2356,10 @@ class BatchAddGraph(object):
         self.count = 0
         return self
 
-    def add(self, triple_or_quad):
+    def add(
+        self,
+        triple_or_quad: Union[Tuple[Node, Node, Node], Tuple[Node, Node, Node, Any]],
+    ) -> "BatchAddGraph":
         """
         Add a triple to the buffer
 
@@ -2323,7 +2375,7 @@ class BatchAddGraph(object):
             self.batch.append(triple_or_quad)
         return self
 
-    def addN(self, quads):
+    def addN(self, quads: Iterable[Tuple[Node, Node, Node, Any]]):
         if self.__batch_addn:
             for q in quads:
                 self.add(q)

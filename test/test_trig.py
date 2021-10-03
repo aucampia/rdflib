@@ -1,6 +1,9 @@
 import unittest
+from unittest.case import expectedFailure
 import rdflib
 import re
+from rdflib import Namespace
+from .testutils import GraphHelper
 
 from nose import SkipTest
 
@@ -11,11 +14,58 @@ TRIPLE = (
 )
 
 
+EG = Namespace("http://example.com/")
+
+
 class TestTrig(unittest.TestCase):
     def testEmpty(self):
         g = rdflib.Graph()
         s = g.serialize(format="trig")
         self.assertTrue(s is not None)
+
+    def test_single_quad(self) -> None:
+        graph = rdflib.ConjunctiveGraph()
+        quad = (EG["subject"], EG["predicate"], EG["object"], EG["graph"])
+        graph.add(quad)
+        check_graph = rdflib.ConjunctiveGraph()
+        data_str = graph.serialize(format="trig")
+        check_graph.parse(data=data_str, format="trig")
+        quad_set, check_quad_set = GraphHelper.quad_sets([graph, check_graph])
+        self.assertEqual(quad_set, check_quad_set)
+
+    @expectedFailure
+    def test_default_identifier(self) -> None:
+        """
+        This should pass, but for some reason when the default identifier is
+        set, trig serializes quads inside this default indentifier to an
+        anonymous graph.
+
+        So in this test, data_str is:
+
+            @base <utf-8> .
+            @prefix ns1: <http://example.com/> .
+
+            {
+                ns1:subject ns1:predicate ns1:object .
+            }
+
+        instead of:
+            @base <utf-8> .
+            @prefix ns1: <http://example.com/> .
+
+            ns1:graph {
+                ns1:subject ns1:predicate ns1:object .
+            }
+        """
+        graph_id = EG["graph"]
+        graph = rdflib.ConjunctiveGraph(identifier=EG["graph"])
+        quad = (EG["subject"], EG["predicate"], EG["object"], graph_id)
+        graph.add(quad)
+        check_graph = rdflib.ConjunctiveGraph()
+        data_str = graph.serialize(format="trig")
+        check_graph.parse(data=data_str, format="trig")
+        quad_set, check_quad_set = GraphHelper.quad_sets([graph, check_graph])
+        self.assertEqual(quad_set, check_quad_set)
 
     def testRepeatTriples(self):
         g = rdflib.ConjunctiveGraph()

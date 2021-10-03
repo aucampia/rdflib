@@ -35,7 +35,7 @@ from .earl import add_test, report
 import unittest
 
 from rdflib import BNode, Graph, ConjunctiveGraph
-from rdflib.term import Node
+from rdflib.term import Node, URIRef
 from unittest.mock import MagicMock, Mock
 from urllib.error import HTTPError
 from urllib.request import urlopen
@@ -222,8 +222,32 @@ class GraphHelper:
         return result
 
     @classmethod
-    def equals(cls, lhs: Graph, rhs: Graph) -> bool:
-        return cls.triple_set(lhs) == cls.triple_set(rhs)
+    def quad_set(cls, graph: ConjunctiveGraph) -> Set[Tuple[Node, Node, Node, Node]]:
+        result: Set[Tuple[Node, Node, Node, Node]] = set()
+        for quad in graph.quads((None, None, None, None)):
+            c: Graph
+            s, p, o, c = quad
+            result.add((s, p, o, c.identifier))
+        return result
+
+    @classmethod
+    def quad_sets(
+        cls, graphs: Iterable[ConjunctiveGraph]
+    ) -> List[Set[Tuple[Node, Node, Node, Node]]]:
+        result: List[Set[Tuple[Node, Node, Node, Node]]] = []
+        for graph in graphs:
+            result.append(cls.quad_set(graph))
+        return result
+
+    # @classmethod
+    # def equals(cls, lhs: Graph, rhs: Graph) -> bool:
+    #     if hasattr(lhs, "quads"):
+    #         if not hasattr(rhs, "quads"):
+    #             return False
+    #         lhs = cast(ConjunctiveGraph, lhs)
+    #         rhs = cast(ConjunctiveGraph, rhs)
+    #         return cls.quad_set(lhs) == cls.quad_set(rhs)
+    #     return cls.triple_set(lhs) == cls.triple_set(rhs)
 
 
 GenericT = TypeVar("GenericT", bound=Any)
