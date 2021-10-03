@@ -57,7 +57,7 @@ class FormatInfo(NamedTuple):
     encodings: Set[str]
 
 
-class Formats(Dict[str, FormatInfo]):
+class FormatInfos(Dict[str, FormatInfo]):
     def add_format(
         self,
         serializer_name: str,
@@ -86,7 +86,7 @@ class Formats(Dict[str, FormatInfo]):
             return Graph()
 
     @classmethod
-    def make(cls) -> "Formats":
+    def make(cls) -> "FormatInfos":
         result = cls()
 
         flexible_formats = {
@@ -134,7 +134,7 @@ class Formats(Dict[str, FormatInfo]):
         return result
 
 
-formats = Formats.make()
+format_infos = FormatInfos.make()
 
 
 class TestSerialize(unittest.TestCase):
@@ -172,7 +172,7 @@ class TestSerialize(unittest.TestCase):
         for plugin_refs in plugins.values():
             names = {plugin_ref.name for plugin_ref in plugin_refs}
             self.assertNotEqual(
-                names.intersection(formats.keys()),
+                names.intersection(format_infos.keys()),
                 set(),
                 f"serializers does not include any of {names}",
             )
@@ -198,8 +198,8 @@ class TestSerialize(unittest.TestCase):
         self.assertIsInstance(data, str)
         # if format == "trig":
         #     logging.debug("format = %s, data = %s", format, data)
-        format_info = formats[format]
-        graph_check = Formats.make_graph(format_info)
+        format_info = format_infos[format]
+        graph_check = FormatInfos.make_graph(format_info)
         graph_check.parse(data=data, format=format_info.deserializer_name)
         self.assert_graphs_equal(self.graph, graph_check)
         # graph_quads, graph_check_quads = GraphHelper.quad_sets(
@@ -213,8 +213,8 @@ class TestSerialize(unittest.TestCase):
         # double check that encoding is right
         data_str = data.decode(encoding)
 
-        format_info = formats[format]
-        graph_check = Formats.make_graph(format_info)
+        format_info = format_infos[format]
+        graph_check = FormatInfos.make_graph(format_info)
         graph_check.parse(data=data_str, format=format_info.deserializer_name)
 
         # graph_check.parse(data=data_str, format=format)
@@ -224,7 +224,7 @@ class TestSerialize(unittest.TestCase):
         # actual check
         # TODO FIXME : what about other encodings?
         if encoding == "utf-8":
-            graph_check = Formats.make_graph(format_info)
+            graph_check = FormatInfos.make_graph(format_info)
             graph_check.parse(data=data, format=format_info.deserializer_name)
             self.assert_graphs_equal(self.graph, graph_check)
             # self.assertEqual(self.triple, next(iter(graph_check)))
@@ -232,18 +232,18 @@ class TestSerialize(unittest.TestCase):
     def check_file(self, source: PurePath, format: str, encoding: str) -> None:
         source = Path(source)
         self.assertTrue(source.exists())
-        format_info = formats[format]
+        format_info = format_infos[format]
 
         # double check that encoding is right
         data_str = source.read_text(encoding=encoding)
-        graph_check = Formats.make_graph(format_info)
+        graph_check = FormatInfos.make_graph(format_info)
         graph_check.parse(data=data_str, format=format_info.deserializer_name)
         self.assert_graphs_equal(self.graph, graph_check)
 
         # actual check
         # TODO FIXME : This should work for all encodings, not just utf-8
         if encoding == "utf-8":
-            graph_check = Formats.make_graph(format_info)
+            graph_check = FormatInfos.make_graph(format_info)
             graph_check.parse(source=source, format=format_info.deserializer_name)
             self.assert_graphs_equal(self.graph, graph_check)
 
@@ -258,7 +258,7 @@ class TestSerialize(unittest.TestCase):
         self.assertIn("badformat", f"{raised.exception}")
 
     def test_str(self) -> None:
-        test_formats = formats.keys()
+        test_formats = format_infos.keys()
         # test_formats = {"json-ld"}
         for format in test_formats:
 
@@ -278,7 +278,7 @@ class TestSerialize(unittest.TestCase):
         for (format, encoding) in itertools.chain(
             *(
                 itertools.product({format_info.serializer_name}, format_info.encodings)
-                for format_info in formats.values()
+                for format_info in format_infos.values()
             )
         ):
             print("format = ", format)
@@ -312,7 +312,7 @@ class TestSerialize(unittest.TestCase):
                     format_info.encodings,
                     filerefs(outfile),
                 )
-                for format_info in formats.values()
+                for format_info in format_infos.values()
             )
         ):
             print("format = ", format)
