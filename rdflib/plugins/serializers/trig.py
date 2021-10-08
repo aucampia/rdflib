@@ -97,3 +97,4 @@ class TrigSerializer(TurtleSerializer):
 
         self.endDocument()
         self.write("\n")
+        self._serialize_end()

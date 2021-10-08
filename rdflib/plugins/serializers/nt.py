@@ -10,6 +10,7 @@ from rdflib.serializer import Serializer
 
 import warnings
 import codecs
+from io import TextIOWrapper
 
 __all__ = ["NTSerializer"]
 
@@ -35,9 +36,15 @@ class NTSerializer(Serializer):
         if encoding is not None and encoding.lower() != self.encoding.lower():
             warnings.warn("NTSerializer does not use custom encoding.")
         encoding = self.encoding
+
+        text_stream = TextIOWrapper(
+            stream, self.encoding, errors="replace", write_through=True
+        )
+
         for triple in self.store:
-            stream.write(_nt_row(triple).encode(self.encoding, "_rdflib_nt_escape"))
-        stream.write("\n".encode("latin-1"))
+            text_stream.write(_nt_row(triple))
+        text_stream.write("\n")
+        text_stream.detach()
 
 
 class NT11Serializer(NTSerializer):

@@ -1,3 +1,4 @@
+from io import IOBase
 from rdflib import graph
 from rdflib.graph import ConjunctiveGraph
 import tempfile
@@ -13,6 +14,7 @@ from pathlib import Path, PurePath
 import sys
 import itertools
 from typing import (
+    IO,
     Any,
     Dict,
     Iterable,
@@ -23,24 +25,13 @@ from typing import (
     Tuple,
     Union,
     cast,
+    Callable,
 )
 import inspect
 from rdflib.plugin import PluginException
 from rdflib.serializer import Serializer
 import enum
-
-import logging
-
-logging.basicConfig(
-    level=os.environ.get("PYLOGGING_LEVEL", logging.DEBUG),
-    stream=sys.stderr,
-    datefmt="%Y-%m-%dT%H:%M:%S",
-    format=(
-        "%(asctime)s.%(msecs)03d %(process)d %(thread)d %(levelno)03d:%(levelname)-8s "
-        "%(name)-12s %(module)s:%(lineno)s:%(funcName)s %(message)s"
-    ),
-)
-
+from contextlib import ExitStack
 
 EG = Namespace("http://example.com/")
 
@@ -73,10 +64,17 @@ class FormatInfos(Dict[str, FormatInfo]):
             encodings,
         )
 
-    def select(self, *, graph_type: GraphType) -> Iterable[str]:
+    def select(
+        self,
+        *,
+        name: Optional[Set[str]] = None,
+        graph_type: Optional[Set[GraphType]] = None,
+    ) -> Iterable[FormatInfo]:
         for format in self.values():
-            if graph_type in format.graph_types:
-                yield format.serializer_name
+            if graph_type is not None and not graph_type.isdisjoint(format.graph_types):
+                yield format
+            if name is not None and format.serializer_name in name:
+                yield format
 
     @classmethod
     def make_graph(self, format_info: FormatInfo) -> Graph:
@@ -145,11 +143,7 @@ class TestSerialize(unittest.TestCase):
             EG["object"],
         )
         self.context = EG["graph"]
-        # self.context = None
         self.quad = (*self.triple, self.context)
-
-        # graph = Graph()
-        # graph.add(self.triple)
 
         conjunctive_graph = ConjunctiveGraph()
         conjunctive_graph.add(self.quad)
@@ -180,7 +174,6 @@ class TestSerialize(unittest.TestCase):
     def assert_graphs_equal(self, lhs: Graph, rhs: Graph) -> None:
         lhs_has_quads = hasattr(lhs, "quads")
         rhs_has_quads = hasattr(rhs, "quads")
-        # self.assertEqual(lhs_has_quads, rhs_has_quads)
         lhs_set: Set[Any]
         rhs_set: Set[Any]
         if lhs_has_quads and rhs_has_quads:
@@ -189,57 +182,52 @@ class TestSerialize(unittest.TestCase):
             lhs_set, rhs_set = GraphHelper.quad_sets([lhs, rhs])
         else:
             lhs_set, rhs_set = GraphHelper.triple_sets([lhs, rhs])
-        # print(f"lhs_set = {lhs_set}, rhs_set = {rhs_set}")
+        self.assertEqual(lhs_set, rhs_set)
         self.assertTrue(len(lhs_set) > 0)
         self.assertTrue(len(rhs_set) > 0)
-        self.assertEqual(lhs_set, rhs_set)
 
     def check_data_string(self, data: str, format: str) -> None:
         self.assertIsInstance(data, str)
-        # if format == "trig":
-        #     logging.debug("format = %s, data = %s", format, data)
         format_info = format_infos[format]
         graph_check = FormatInfos.make_graph(format_info)
         graph_check.parse(data=data, format=format_info.deserializer_name)
         self.assert_graphs_equal(self.graph, graph_check)
-        # graph_quads, graph_check_quads = GraphHelper.quad_sets(
-        #     [self.graph, graph_check]
-        # )
-        # self.assertEqual(graph_quads, graph_check_quads)
 
     def check_data_bytes(self, data: bytes, format: str, encoding: str) -> None:
         self.assertIsInstance(data, bytes)
 
         # double check that encoding is right
         data_str = data.decode(encoding)
-
         format_info = format_infos[format]
         graph_check = FormatInfos.make_graph(format_info)
         graph_check.parse(data=data_str, format=format_info.deserializer_name)
-
-        # graph_check.parse(data=data_str, format=format)
-        # self.assertEqual(self.triple, next(iter(graph_check)))
         self.assert_graphs_equal(self.graph, graph_check)
 
         # actual check
-        # TODO FIXME : what about other encodings?
+        # TODO FIXME : handle other encodings
         if encoding == "utf-8":
             graph_check = FormatInfos.make_graph(format_info)
             graph_check.parse(data=data, format=format_info.deserializer_name)
             self.assert_graphs_equal(self.graph, graph_check)
-            # self.assertEqual(self.triple, next(iter(graph_check)))
 
     def check_file(self, source: PurePath, format: str, encoding: str) -> None:
         source = Path(source)
-        self.assertTrue(source.exists())
         format_info = format_infos[format]
 
         # double check that encoding is right
         data_str = source.read_text(encoding=encoding)
         graph_check = FormatInfos.make_graph(format_info)
+        # print(
+        #     {
+        #         "format_info": format_info,
+        #         "format_info.deserializer_name": format_info.deserializer_name,
+        #     }
+        # )
+        # print("data_str", data_str)
         graph_check.parse(data=data_str, format=format_info.deserializer_name)
         self.assert_graphs_equal(self.graph, graph_check)
 
+        self.assertTrue(source.exists())
         # actual check
         # TODO FIXME : This should work for all encodings, not just utf-8
         if encoding == "utf-8":
@@ -259,7 +247,6 @@ class TestSerialize(unittest.TestCase):
 
     def test_str(self) -> None:
         test_formats = format_infos.keys()
-        # test_formats = {"json-ld"}
         for format in test_formats:
 
             def check(data: str) -> None:
@@ -281,8 +268,6 @@ class TestSerialize(unittest.TestCase):
                 for format_info in format_infos.values()
             )
         ):
-            print("format = ", format)
-            print("encoding = ", encoding)
 
             def check(data: bytes) -> None:
                 with self.subTest(
@@ -298,53 +283,130 @@ class TestSerialize(unittest.TestCase):
             check(self.graph.serialize(None, format=format, encoding=encoding))
 
     def test_file(self) -> None:
-        # formats = ["turtle"]
-        # encodings = ["utf-16", "utf-8", "latin-1"]
-        outfile = self.tmpdir / "output"
+        # outfile = self.tmpdir / "output"
+        counter = 0
 
-        def filerefs(path: Path) -> Iterable[Union[str, PurePath]]:
-            return [path, PurePath(path), f"{path}", path.as_uri()]
+        def filerefx(
+            ref: Union[
+                str,
+                PurePath,
+                Callable[[ExitStack], IO[bytes]],
+                Callable[[ExitStack], IO[str]],
+            ],
+            stack: ExitStack,
+        ) -> Union[str, PurePath, IO[bytes], IO[str]]:
+            if callable(ref):
+                return ref(stack)
+            return ref
 
-        for (format, encoding, fileref) in itertools.chain(
+        def filerefs() -> List[
+            Tuple[
+                Union[
+                    str,
+                    PurePath,
+                    Callable[[ExitStack], IO[bytes]],
+                    Callable[[ExitStack], IO[str]],
+                ],
+                Path,
+            ]
+        ]:
+            result: List[
+                Tuple[
+                    Union[
+                        str,
+                        PurePath,
+                        Callable[[ExitStack], IO[bytes]],
+                        Callable[[ExitStack], IO[str]],
+                    ],
+                    Path,
+                ]
+            ] = []
+            path = self.tmpdir / "output-path"
+            result.append((path, path))
+            path = self.tmpdir / "output-purepath"
+            result.append((PurePath(path), path))
+            path = self.tmpdir / "output-strpath"
+            result.append((f"{path}", path))
+            path = self.tmpdir / "output-uri"
+            result.append((path.as_uri(), path))
+            nonlocal counter
+            counter += 1
+            result.append(
+                (
+                    lambda stack: stack.enter_context(
+                        (self.tmpdir / f"output-iobytes-{counter}").open("wb")
+                    ),
+                    self.tmpdir / f"output-iobytes-{counter}",
+                )
+            )
+            # result.append(
+            #     (
+            #         lambda: (self.tmpdir / "output-iostr").open("w"),
+            #         self.tmpdir / "output-iostr",
+            #     )
+            # )
+            # path = self.tmpdir / "output-iostr"
+            # result.append((lambda: path.open("w"), path))
+            return result
+
+        for (format, encoding, file_info) in itertools.chain(
             *(
                 itertools.product(
                     {format_info.serializer_name},
                     format_info.encodings,
-                    filerefs(outfile),
+                    filerefs(),
                 )
-                for format_info in format_infos.values()
+                for format_info in format_infos.select(name={"xml"})
+                # for format_info in format_infos.values()
             )
         ):
-            print("format = ", format)
-            print("encoding = ", encoding)
-            print("fileref = ", fileref)
-            # for (format, encoding, fileref) in itertools.chain(
-            #     itertools.product(formats, encodings, filerefs(outfile)),
-            #     itertools.product(["nt"], ["ascii"], filerefs(outfile)),
-            #     itertools.product(["xml"], ["utf-8"], filerefs(outfile)),
-            # ):
+            fileref, outfile = file_info
 
-            def check(graph: Graph) -> None:
+            print({"format": format, "encoding": encoding, "file_info": file_info})
+
+            # if isinstance(fileref, IOBase):
+            #     self.assertFalse(fileref.closed)
+            #     print({"fileref.closed": fileref.closed})
+
+            def check(_graph: Graph) -> None:
                 with self.subTest(
                     format=format,
                     encoding=encoding,
                     fileref=fileref,
                     caller=inspect.stack()[1],
                 ):
+                    print("outfile.read_text() =", outfile.read_text())
                     self.check_file(outfile, format, encoding)
 
-            if (format, encoding) == ("turtle", "utf-8"):
-                check(self.graph.serialize(fileref))
-                check(self.graph.serialize(fileref, encoding=None))
-            if format == "turtle":
-                check(self.graph.serialize(fileref, encoding=encoding))
-            if encoding == sys.getdefaultencoding():
-                check(self.graph.serialize(fileref, format))
-                check(self.graph.serialize(fileref, format, None))
-                check(self.graph.serialize(fileref, format, None, None))
+            with ExitStack() as stack:
+                if (format, encoding) == ("turtle", "utf-8"):
+                    check(self.graph.serialize(filerefx(fileref, stack)))
+                    check(self.graph.serialize(filerefx(fileref, stack), encoding=None))
+                if format == "turtle":
+                    check(
+                        self.graph.serialize(
+                            filerefx(fileref, stack), encoding=encoding
+                        )
+                    )
+                if encoding == sys.getdefaultencoding():
+                    check(self.graph.serialize(filerefx(fileref, stack), format))
+                    check(self.graph.serialize(filerefx(fileref, stack), format, None))
+                    check(
+                        self.graph.serialize(
+                            filerefx(fileref, stack), format, None, None
+                        )
+                    )
 
-            check(self.graph.serialize(fileref, format, encoding=encoding))
-            check(self.graph.serialize(fileref, format, None, encoding))
+                check(
+                    self.graph.serialize(
+                        filerefx(fileref, stack), format, encoding=encoding
+                    )
+                )
+                check(
+                    self.graph.serialize(
+                        filerefx(fileref, stack), format, None, encoding
+                    )
+                )
 
 
 if __name__ == "__main__":

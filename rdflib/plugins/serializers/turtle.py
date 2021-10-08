@@ -192,7 +192,7 @@ class TurtleSerializer(RecursiveSerializer):
         super(TurtleSerializer, self).__init__(store)
         self.keywords = {RDF.type: "a"}
         self.reset()
-        self.stream = None
+        self.stream: TextIOWrapper = None
         self._spacious = _SPACIOUS_OUTPUT
 
     def addNamespace(self, prefix, namespace):
@@ -234,6 +234,8 @@ class TurtleSerializer(RecursiveSerializer):
         spacious: Optional[bool] = None,
     ) -> None:
         self.reset()
+        # print("stream.closed =", stream.closed)
+        assert not stream.closed
         if encoding is not None:
             self.encoding = encoding
         self.stream = TextIOWrapper(
@@ -246,6 +248,11 @@ class TurtleSerializer(RecursiveSerializer):
             self.base = self.store.base
         if spacious is not None:
             self._spacious = spacious
+
+    def _serialize_end(self) -> None:
+        self.stream.flush()
+        self.stream.detach()
+        self.stream = None
 
     def serialize(
         self,
@@ -273,8 +280,7 @@ class TurtleSerializer(RecursiveSerializer):
 
         self.endDocument()
         self.stream.write("\n")
-        self.base = None
-        self.stream.flush()
+        self._serialize_end()
 
     def preprocessTriple(self, triple):
         super(TurtleSerializer, self).preprocessTriple(triple)

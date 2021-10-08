@@ -46,6 +46,10 @@ class TestSerializeTabular(unittest.TestCase):
     def tearDown(self) -> None:
         self._tmpdir.cleanup()
 
+    def formats(self) -> None:
+
+
+
     def test_serialize_table_csv_str(self) -> None:
         format = "csv"
 
