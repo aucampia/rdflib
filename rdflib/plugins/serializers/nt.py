@@ -5,6 +5,7 @@ format.
 """
 from typing import IO, Optional
 
+from rdflib.graph import Graph
 from rdflib.term import Literal
 from rdflib.serializer import Serializer
 
@@ -20,7 +21,7 @@ class NTSerializer(Serializer):
     Serializes RDF graphs to NTriples format.
     """
 
-    def __init__(self, store):
+    def __init__(self, store: Graph):
         Serializer.__init__(self, store)
         self.encoding = "ascii"  # n-triples are ascii encoded
 
@@ -54,7 +55,7 @@ class NT11Serializer(NTSerializer):
     Exactly like nt - only utf8 encoded.
     """
 
-    def __init__(self, store):
+    def __init__(self, store: Graph):
         Serializer.__init__(self, store)  # default to utf-8
 
 

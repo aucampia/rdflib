@@ -236,13 +236,6 @@ class TestSerialize(unittest.TestCase):
         # double check that encoding is right
         data_str = source.read_text(encoding=encoding)
         graph_check = FormatInfos.make_graph(format_info)
-        # print(
-        #     {
-        #         "format_info": format_info,
-        #         "format_info.deserializer_name": format_info.deserializer_name,
-        #     }
-        # )
-        # print("data_str", data_str)
         graph_check.parse(data=data_str, format=format_info.deserializer_name)
         self.assert_graphs_equal(self.graph, graph_check)
 
@@ -315,8 +308,6 @@ class TestSerialize(unittest.TestCase):
                 for format_info in format_infos.values()
             )
         ):
-            print({"format": format, "encoding": encoding, "dest_type": dest_type})
-
             with ExitStack() as stack:
                 dest_path: Path
                 _dest: Union[str, Path, PurePath, IO[bytes]]

@@ -10,15 +10,18 @@ See also rdflib.plugin
 
 """
 
-from typing import IO, BinaryIO, Optional, Union
+from typing import IO, TYPE_CHECKING, Optional
 from rdflib.term import URIRef
+
+if TYPE_CHECKING:
+    from rdflib.graph import Graph
 
 __all__ = ["Serializer"]
 
 
 class Serializer:
-    def __init__(self, store):
-        self.store = store
+    def __init__(self, store: "Graph"):
+        self.store: "Graph" = store
         self.encoding: str = "utf-8"
         self.base: Optional[str] = None
 

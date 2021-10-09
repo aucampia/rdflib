@@ -6,12 +6,13 @@ See <http://www.w3.org/TeamSubmission/turtle/> for syntax specification.
 from collections import defaultdict
 from functools import cmp_to_key
 
+from rdflib.graph import Graph
 from rdflib.term import BNode, Literal, URIRef
 from rdflib.exceptions import Error
 from rdflib.serializer import Serializer
 from rdflib.namespace import RDF, RDFS
 from io import BufferedIOBase, RawIOBase, TextIOBase, TextIOWrapper
-from typing import IO, Optional
+from typing import IO, TYPE_CHECKING, Dict, Optional
 
 __all__ = ["RecursiveSerializer", "TurtleSerializer"]
 
@@ -45,12 +46,14 @@ class RecursiveSerializer(Serializer):
     maxDepth = 10
     indentString = "  "
     roundtrip_prefixes = ()
-    stream: IO[str]
 
-    def __init__(self, store):
+    def __init__(self, store: Graph):
 
         super(RecursiveSerializer, self).__init__(store)
-        self.stream = None
+        # TODO FIXME: Ideally stream should be optional, but nothing treats it
+        # as such, so least weird solution is to just type it as not optional
+        # even thoug it can sometimes be null.
+        self.stream: IO[str] = None  # type: ignore[assignment]
         self.reset()
 
     def addNamespace(self, prefix, uri):
@@ -187,15 +190,15 @@ class TurtleSerializer(RecursiveSerializer):
     short_name = "turtle"
     indentString = "    "
 
-    def __init__(self, store):
-        self._ns_rewrite = {}
+    def __init__(self, store: Graph):
+        self._ns_rewrite: Dict[str, str] = {}
         super(TurtleSerializer, self).__init__(store)
         self.keywords = {RDF.type: "a"}
         self.reset()
-        self.stream: TextIOWrapper = None
+        self.stream: TextIOWrapper = None  # type: ignore[assignment]
         self._spacious = _SPACIOUS_OUTPUT
 
-    def addNamespace(self, prefix, namespace):
+    def addNamespace(self, prefix: str, namespace: str):
         # Turtle does not support prefix that start with _
         # if they occur in the graph, rewrite to p_blah
         # this is more complicated since we need to make sure p_blah
@@ -234,8 +237,6 @@ class TurtleSerializer(RecursiveSerializer):
         spacious: Optional[bool] = None,
     ) -> None:
         self.reset()
-        # print("stream.closed =", stream.closed)
-        assert not stream.closed
         if encoding is not None:
             self.encoding = encoding
         self.stream = TextIOWrapper(
@@ -252,7 +253,7 @@ class TurtleSerializer(RecursiveSerializer):
     def _serialize_end(self) -> None:
         self.stream.flush()
         self.stream.detach()
-        self.stream = None
+        self.stream = None  # type: ignore[assignment]
 
     def serialize(
         self,

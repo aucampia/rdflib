@@ -54,7 +54,7 @@ PLAIN_LITERAL_TYPES = {XSD.boolean, XSD.integer, XSD.double, XSD.string}
 
 
 class JsonLDSerializer(Serializer):
-    def __init__(self, store):
+    def __init__(self, store: Graph):
         super(JsonLDSerializer, self).__init__(store)
 
     def serialize(

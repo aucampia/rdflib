@@ -363,19 +363,23 @@ class Graph(Node):
     def identifier(self) -> Node:  # read-only attr
         return self.__get_identifier()
 
-    def _get_namespace_manager(self):
+    def _get_namespace_manager(self) -> NamespaceManager:
         if self.__namespace_manager is None:
             self.__namespace_manager = NamespaceManager(self)
         return self.__namespace_manager
 
-    def _set_namespace_manager(self, nm):
+    def _set_namespace_manager(self, nm: NamespaceManager):
         self.__namespace_manager = nm
 
-    namespace_manager = property(
-        _get_namespace_manager,
-        _set_namespace_manager,
-        doc="this graph's namespace-manager",
-    )
+    @property
+    def namespace_manager(self) -> NamespaceManager:
+        """this graph's namespace-manager"""
+        return self._get_namespace_manager()
+
+    @namespace_manager.setter
+    def namespace_manager(self, value: NamespaceManager):
+        """this graph's namespace-manager"""
+        self._set_namespace_manager(value)
 
     def __repr__(self):
         return "<Graph identifier=%s (%s)>" % (self.identifier, type(self))
@@ -675,17 +679,17 @@ class Graph(Node):
         self.add((subject, predicate, object_))
         return self
 
-    def subjects(self, predicate=None, object=None):
+    def subjects(self, predicate=None, object=None) -> Iterable[Node]:
         """A generator of subjects with the given predicate and object"""
         for s, p, o in self.triples((None, predicate, object)):
             yield s
 
-    def predicates(self, subject=None, object=None):
+    def predicates(self, subject=None, object=None) -> Iterable[Node]:
         """A generator of predicates with the given subject and object"""
         for s, p, o in self.triples((subject, None, object)):
             yield p
 
-    def objects(self, subject=None, predicate=None):
+    def objects(self, subject=None, predicate=None) -> Iterable[Node]:
         """A generator of objects with the given subject and predicate"""
         for s, p, o in self.triples((subject, predicate, None)):
             yield o

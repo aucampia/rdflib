@@ -4,10 +4,12 @@ See <http://www.w3.org/TR/trig/> for syntax specification.
 """
 
 from collections import defaultdict
-from typing import IO, Optional
+from typing import IO, TYPE_CHECKING, Optional, Union, cast
 
+from rdflib.graph import ConjunctiveGraph, Graph
 from rdflib.plugins.serializers.turtle import TurtleSerializer
-from rdflib.term import BNode
+from rdflib.term import BNode, Node
+
 
 __all__ = ["TrigSerializer"]
 
@@ -17,8 +19,10 @@ class TrigSerializer(TurtleSerializer):
     short_name = "trig"
     indentString = 4 * " "
 
-    def __init__(self, store):
+    def __init__(self, store: Union[Graph, ConjunctiveGraph]):
+        self.default_context: Optional[Node]
         if store.context_aware:
+            store = cast("ConjunctiveGraph", store)
             self.contexts = list(store.contexts())
             self.default_context = store.default_context.identifier
             if store.default_context:
