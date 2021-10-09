@@ -15,6 +15,7 @@ import sys
 import itertools
 from typing import (
     IO,
+    TYPE_CHECKING,
     Any,
     Dict,
     Iterable,
@@ -26,6 +27,7 @@ from typing import (
     Union,
     cast,
     Callable,
+    overload,
 )
 import inspect
 from rdflib.plugin import PluginException
@@ -33,7 +35,85 @@ from rdflib.serializer import Serializer
 import enum
 from contextlib import ExitStack
 
+if TYPE_CHECKING:
+    from typing_extensions import Literal
+
 EG = Namespace("http://example.com/")
+
+
+class DestinationType(str, enum.Enum):
+    PATH = enum.auto()
+    PURE_PATH = enum.auto()
+    PATH_STR = enum.auto()
+    IO_BYTES = enum.auto()
+    IO_STR = enum.auto()
+
+
+class DestinationFactory:
+    _counter: int = 0
+
+    def __init__(self, tmpdir: Path) -> None:
+        self.tmpdir = tmpdir
+
+    # @overload
+    # def make(
+    #     self,
+    #     type: "Literal[DestinationType.IO_STR]",
+    #     stack: Optional[ExitStack] = ...,
+    # ) -> Tuple[IO[str], Path]:
+    #     ...
+
+    # @overload
+    # def make(
+    #     self,
+    #     type: "Literal[DestinationType.IO_BYTES]",
+    #     stack: Optional[ExitStack] = ...,
+    # ) -> Tuple[IO[bytes], Path]:
+    #     ...
+
+    # @overload
+    # def make(
+    #     self,
+    #     type: "Literal[DestinationType.PATH]",
+    #     stack: Optional[ExitStack] = ...,
+    # ) -> Tuple[Path, Path]:
+    #     ...
+
+    # @overload
+    # def make(
+    #     self,
+    #     type: "Literal[DestinationType.PURE_PATH]",
+    #     stack: Optional[ExitStack] = ...,
+    # ) -> Tuple[PurePath, Path]:
+    #     ...
+
+    # @overload
+    # def make(
+    #     self,
+    #     type: "Literal[DestinationType.PATH_STR]",
+    #     stack: Optional[ExitStack] = ...,
+    # ) -> Tuple[str, Path]:
+    #     ...
+
+    def make(
+        self,
+        type: DestinationType,
+        stack: Optional[ExitStack] = None,
+    ) -> Tuple[Union[str, Path, PurePath, IO[bytes], IO[str]], Path]:
+        self._counter += 1
+        count = self._counter
+        path = self.tmpdir / f"file-{type}-{count:05d}"
+        if type is DestinationType.PATH:
+            return (path, path)
+        if type is DestinationType.PURE_PATH:
+            return (PurePath(path), path)
+        if type is DestinationType.PATH_STR:
+            return (f"{path}", path)
+        if type is DestinationType.IO_BYTES:
+            return (path.open("wb") if stack is None else stack.enter_context(path.open("wb")), path)
+        if type is DestinationType.IO_STR:
+            return (path.open("w") if stack is None else stack.enter_context(path.open("w")), path)
+        raise ValueError(f"unsupported type {type}")
 
 
 class GraphType(str, enum.Enum):
@@ -284,127 +364,156 @@ class TestSerialize(unittest.TestCase):
 
     def test_file(self) -> None:
         # outfile = self.tmpdir / "output"
-        counter = 0
+        # counter = 0
 
-        def filerefx(
-            ref: Union[
-                str,
-                PurePath,
-                Callable[[ExitStack], IO[bytes]],
-                Callable[[ExitStack], IO[str]],
-            ],
-            stack: ExitStack,
-        ) -> Union[str, PurePath, IO[bytes], IO[str]]:
-            if callable(ref):
-                return ref(stack)
-            return ref
+        # def filerefx(
+        #     ref: Union[
+        #         str,
+        #         PurePath,
+        #         Callable[[ExitStack], IO[bytes]],
+        #         Callable[[ExitStack], IO[str]],
+        #     ],
+        #     stack: ExitStack,
+        # ) -> Union[str, PurePath, IO[bytes], IO[str]]:
+        #     if callable(ref):
+        #         return ref(stack)
+        #     return ref
 
-        def filerefs() -> List[
-            Tuple[
-                Union[
-                    str,
-                    PurePath,
-                    Callable[[ExitStack], IO[bytes]],
-                    Callable[[ExitStack], IO[str]],
-                ],
-                Path,
-            ]
-        ]:
-            result: List[
-                Tuple[
-                    Union[
-                        str,
-                        PurePath,
-                        Callable[[ExitStack], IO[bytes]],
-                        Callable[[ExitStack], IO[str]],
-                    ],
-                    Path,
-                ]
-            ] = []
-            path = self.tmpdir / "output-path"
-            result.append((path, path))
-            path = self.tmpdir / "output-purepath"
-            result.append((PurePath(path), path))
-            path = self.tmpdir / "output-strpath"
-            result.append((f"{path}", path))
-            path = self.tmpdir / "output-uri"
-            result.append((path.as_uri(), path))
-            nonlocal counter
-            counter += 1
-            result.append(
-                (
-                    lambda stack: stack.enter_context(
-                        (self.tmpdir / f"output-iobytes-{counter}").open("wb")
-                    ),
-                    self.tmpdir / f"output-iobytes-{counter}",
-                )
-            )
-            # result.append(
-            #     (
-            #         lambda: (self.tmpdir / "output-iostr").open("w"),
-            #         self.tmpdir / "output-iostr",
-            #     )
-            # )
-            # path = self.tmpdir / "output-iostr"
-            # result.append((lambda: path.open("w"), path))
-            return result
+        # def filerefs() -> List[
+        #     Tuple[
+        #         Union[
+        #             str,
+        #             PurePath,
+        #             Callable[[ExitStack], IO[bytes]],
+        #             Callable[[ExitStack], IO[str]],
+        #         ],
+        #         Path,
+        #     ]
+        # ]:
+        #     result: List[
+        #         Tuple[
+        #             Union[
+        #                 str,
+        #                 PurePath,
+        #                 Callable[[ExitStack], IO[bytes]],
+        #                 Callable[[ExitStack], IO[str]],
+        #             ],
+        #             Path,
+        #         ]
+        #     ] = []
+        #     path = self.tmpdir / "output-path"
+        #     result.append((path, path))
+        #     path = self.tmpdir / "output-purepath"
+        #     result.append((PurePath(path), path))
+        #     path = self.tmpdir / "output-strpath"
+        #     result.append((f"{path}", path))
+        #     path = self.tmpdir / "output-uri"
+        #     result.append((path.as_uri(), path))
+        #     nonlocal counter
+        #     counter += 1
+        #     result.append(
+        #         (
+        #             lambda stack: stack.enter_context(
+        #                 (self.tmpdir / f"output-iobytes-{counter}").open("wb")
+        #             ),
+        #             self.tmpdir / f"output-iobytes-{counter}",
+        #         )
+        #     )
+        #     # result.append(
+        #     #     (
+        #     #         lambda: (self.tmpdir / "output-iostr").open("w"),
+        #     #         self.tmpdir / "output-iostr",
+        #     #     )
+        #     # )
+        #     # path = self.tmpdir / "output-iostr"
+        #     # result.append((lambda: path.open("w"), path))
+        #     return result
 
-        for (format, encoding, file_info) in itertools.chain(
+        dest_factory = DestinationFactory(self.tmpdir)
+        # dest_type: Union[
+        #     "Literal[DestinationType.PATH]",
+        #     "Literal[DestinationType.PURE_PATH]",
+        #     "Literal[DestinationType.PATH_STR]",
+        #     "Literal[DestinationType.IO_BYTES]",
+        # ]
+
+        # {
+        #                 DestinationType.PATH,
+        #                 DestinationType.PURE_PATH,
+        #                 DestinationType.PATH_STR,
+        #                 DestinationType.IO_BYTES,
+        #             }
+
+        for (format, encoding, dest_type) in itertools.chain(
             *(
                 itertools.product(
                     {format_info.serializer_name},
                     format_info.encodings,
-                    filerefs(),
+                    set(DestinationType).difference({DestinationType.IO_STR}),
+                    # {DestinationType.IO_BYTES}
                 )
-                for format_info in format_infos.select(name={"xml"})
-                # for format_info in format_infos.values()
+                # for format_info in format_infos.select(name={"xml"})
+                for format_info in format_infos.values()
             )
         ):
-            fileref, outfile = file_info
+            # fileref, outfile = file_info
 
-            print({"format": format, "encoding": encoding, "file_info": file_info})
-
-            # if isinstance(fileref, IOBase):
-            #     self.assertFalse(fileref.closed)
-            #     print({"fileref.closed": fileref.closed})
-
-            def check(_graph: Graph) -> None:
-                with self.subTest(
-                    format=format,
-                    encoding=encoding,
-                    fileref=fileref,
-                    caller=inspect.stack()[1],
-                ):
-                    print("outfile.read_text() =", outfile.read_text())
-                    self.check_file(outfile, format, encoding)
+            print({"format": format, "encoding": encoding, "dest_type": dest_type})
 
             with ExitStack() as stack:
+                # if isinstance(fileref, IOBase):
+                #     self.assertFalse(fileref.closed)
+                #     print({"fileref.closed": fileref.closed})
+                # _dest: Union[str, Path, PurePath, IO[bytes]]
+                dest_path: Path
+                _dest: Union[str, Path, PurePath, IO[bytes]]
+
+                def dest() -> Union[str, Path, PurePath, IO[bytes]]:
+                    nonlocal dest_path
+                    nonlocal _dest
+                    _dest, dest_path = dest_factory.make(dest_type, stack)
+                    # print("dest_path = ", dest_path, "dest_path.read_text() = ", dest_path.read_text())
+                    return _dest
+
+                def check(_graph: Graph) -> None:
+                    with self.subTest(
+                        format=format,
+                        encoding=encoding,
+                        dest_type=dest_type,
+                        caller=inspect.stack()[1],
+                    ):
+                        if isinstance(_dest, IOBase):
+                            _dest.flush()
+                        # print("dest_path = ", dest_path, "dest_path.read_text() = ", dest_path.read_text())
+                        self.check_file(dest_path, format, encoding)
+                        dest_path.unlink()
+
                 if (format, encoding) == ("turtle", "utf-8"):
-                    check(self.graph.serialize(filerefx(fileref, stack)))
-                    check(self.graph.serialize(filerefx(fileref, stack), encoding=None))
+                    check(self.graph.serialize(dest()))
+                    check(self.graph.serialize(dest(), encoding=None))
                 if format == "turtle":
                     check(
                         self.graph.serialize(
-                            filerefx(fileref, stack), encoding=encoding
+                            dest(), encoding=encoding
                         )
                     )
                 if encoding == sys.getdefaultencoding():
-                    check(self.graph.serialize(filerefx(fileref, stack), format))
-                    check(self.graph.serialize(filerefx(fileref, stack), format, None))
+                    check(self.graph.serialize(dest(), format))
+                    check(self.graph.serialize(dest(), format, None))
                     check(
                         self.graph.serialize(
-                            filerefx(fileref, stack), format, None, None
+                            dest(), format, None, None
                         )
                     )
 
                 check(
                     self.graph.serialize(
-                        filerefx(fileref, stack), format, encoding=encoding
+                        dest(), format, encoding=encoding
                     )
                 )
                 check(
                     self.graph.serialize(
-                        filerefx(fileref, stack), format, None, encoding
+                        dest(), format, None, encoding
                     )
                 )
 
