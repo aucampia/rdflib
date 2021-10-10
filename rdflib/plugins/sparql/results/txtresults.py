@@ -1,8 +1,10 @@
+from typing import IO, Optional, TextIO, Union
 from rdflib import URIRef, BNode, Literal
 from rdflib.query import ResultSerializer
+from rdflib.namespace import NamespaceManager
 
 
-def _termString(t, namespace_manager):
+def _termString(t, namespace_manager: Optional[NamespaceManager]):
     if t is None:
         return "-"
     if namespace_manager:
@@ -21,7 +23,12 @@ class TXTResultSerializer(ResultSerializer):
     A write only QueryResult serializer for text/ascii tables
     """
 
-    def serialize(self, stream, encoding, namespace_manager=None):
+    def serialize(
+        self,
+        stream: Union[IO[bytes], TextIO],
+        encoding: Optional[str],
+        namespace_manager: Optional[NamespaceManager] = None,
+    ):
         """
         return a text table of query results
         """

@@ -328,15 +328,23 @@ class Result(object):
         :type format: str
         """
         if self.type in ("CONSTRUCT", "DESCRIBE"):
+            if format is None:
+                format = "turtle"
             if (
                 destination is not None
                 and hasattr(destination, "encoding")
                 and hasattr(destination, "buffer")
             ):
                 destination = cast(TextIO, destination).buffer
-            return self.graph.serialize(
-                destination, encoding=encoding, format=format, **args
+            destination = cast(
+                Optional[Union[str, pathlib.PurePath, IO[bytes]]], destination
             )
+            result = self.graph.serialize(
+                destination=destination, format=format, encoding=encoding, **args
+            )
+            if isinstance(result, Graph):
+                return None
+            return result
 
         """stolen wholesale from graph.serialize"""
         from rdflib import plugin
@@ -463,12 +471,12 @@ class ResultSerializer(object):
         ...
 
     @overload
-    def serialize(self, stream: IO[str], encoding: None = ..., **kwargs):
+    def serialize(self, stream: TextIO, encoding: None = ..., **kwargs):
         ...
 
     def serialize(
         self,
-        stream: Union[IO[bytes], IO[str]],
+        stream: Union[IO[bytes], TextIO],
         encoding: Optional[str] = None,
         **kwargs,
     ):

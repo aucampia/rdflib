@@ -47,8 +47,24 @@ class TestSerializeTabular(unittest.TestCase):
         self._tmpdir.cleanup()
 
     def formats(self) -> None:
+        pass
 
+    def test_str(self) -> None:
+        pass
+        # test_formats = format_infos.keys()
+        # for format in test_formats:
 
+        #     def check(data: str) -> None:
+        #         with self.subTest(format=format, caller=inspect.stack()[1]):
+        #             self.check_data_string(data, format=format)
+
+        #     if format == "turtle":
+        #         check(self.graph.serialize())
+        #     check(self.graph.serialize(None, format))
+        #     check(self.graph.serialize(None, format, encoding=None))
+        #     check(self.graph.serialize(None, format, None, None))
+        #     check(self.graph.serialize(None, format=format))
+        #     check(self.graph.serialize(None, format=format, encoding=None))
 
     def test_serialize_table_csv_str(self) -> None:
         format = "csv"

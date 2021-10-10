@@ -10,7 +10,7 @@ http://www.w3.org/TR/sparql11-results-csv-tsv/
 import codecs
 import csv
 from io import BufferedIOBase, RawIOBase
-from typing import IO, Optional, Union, cast
+from typing import IO, Optional, TextIO, Union, cast
 
 from rdflib import Variable, BNode, URIRef, Literal
 
@@ -64,10 +64,7 @@ class CSVResultSerializer(ResultSerializer):
             raise Exception("CSVSerializer can only serialize select query results")
 
     def serialize(
-        self,
-        stream: Union[IO[bytes], IO[str]],
-        encoding: Optional[str] = None,
-        **kwargs
+        self, stream: Union[IO[bytes], TextIO], encoding: Optional[str] = None, **kwargs
     ):
 
         # the serialiser writes bytes in the given encoding

@@ -1,4 +1,5 @@
 import logging
+from typing import IO, Optional, TextIO, Union
 
 from xml.sax.saxutils import XMLGenerator
 from xml.dom import XML_NAMESPACE
@@ -101,7 +102,7 @@ class XMLResultSerializer(ResultSerializer):
     def __init__(self, result):
         ResultSerializer.__init__(self, result)
 
-    def serialize(self, stream, encoding="utf-8"):
+    def serialize(self, stream: Union[IO[bytes], TextIO], encoding: Optional[str]):
 
         writer = SPARQLXMLWriter(stream, encoding)
         if self.result.type == "ASK":
