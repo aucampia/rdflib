@@ -1,14 +1,27 @@
+from contextlib import ExitStack
 import itertools
-from typing import Dict, Iterable, List, NamedTuple, Optional, Set
+from typing import (
+    IO,
+    Dict,
+    Iterable,
+    List,
+    NamedTuple,
+    Optional,
+    Set,
+    TextIO,
+    Union,
+    cast,
+)
 from rdflib.graph import test
 from rdflib.query import Result, ResultRow
+from .test_serialize import DestinationFactory, DestinationType
 from test.testutils import GraphHelper
 from rdflib.term import Node
 import unittest
 from rdflib import Graph, Namespace
 from tempfile import TemporaryDirectory
-from pathlib import Path
-from io import BytesIO, StringIO
+from pathlib import Path, PurePath
+from io import BytesIO, IOBase, StringIO, TextIOBase
 import json
 import io
 import csv
@@ -199,6 +212,7 @@ class TestSerializeTabular(unittest.TestCase):
                 for format_info in format_infos.values()
             )
         ):
+
             def check(data: bytes) -> None:
                 with self.subTest(format=format, caller=inspect.stack()[1]):
                     self.assertIsInstance(data, bytes)
@@ -248,6 +262,64 @@ class TestSerializeTabular(unittest.TestCase):
     #     # check(self.result.serialize(destination=None, encoding=encoding))
     #     check(self.result.serialize(destination=None, encoding=encoding, format=format))
 
+    def test_file(self) -> None:
+
+        dest_factory = DestinationFactory(self.tmpdir)
+
+        for (format, encoding, dest_type) in itertools.chain(
+            *(
+                itertools.product(
+                    {format_info.serializer_name},
+                    format_info.encodings,
+                    set(DestinationType),
+                )
+                for format_info in format_infos.values()
+            )
+        ):
+            with ExitStack() as stack:
+                dest_path: Path
+                _dest: Union[str, Path, PurePath, IO[bytes], TextIO]
+
+                def dest() -> Union[str, Path, PurePath, IO[bytes], TextIO]:
+                    nonlocal dest_path
+                    nonlocal _dest
+                    _dest, dest_path = dest_factory.make(dest_type, stack)
+                    return _dest
+
+                def check(none: None) -> None:
+                    with self.subTest(
+                        format=format,
+                        encoding=encoding,
+                        dest_type=dest_type,
+                        caller=inspect.stack()[1],
+                    ):
+                        if isinstance(_dest, IOBase):
+                            _dest.flush()
+                        format_info = format_infos[format]
+                        data_str = dest_path.read_text(encoding=encoding)
+                        if format_info.deserializer_name == "txt":
+                            check_txt(self, self.result, data_str)
+                        else:
+                            result_check = Result.parse(
+                                StringIO(data_str), format=format_info.deserializer_name
+                            )
+                            self.assertEqual(self.result, result_check)
+                        dest_path.unlink()
+
+                if dest_type == DestinationType.IO_BYTES:
+                    check(
+                        self.result.serialize(
+                            destination=cast(IO[bytes], dest()),
+                            encoding=encoding,
+                            format=format,
+                        )
+                    )
+                check(
+                    self.result.serialize(
+                        destination=dest(), encoding=None, format=format
+                    )
+                )
+
     # def test_serialize_table_csv_file(self) -> None:
     #     outfile = self.tmpdir / "output.csv"
 
@@ -266,56 +338,56 @@ class TestSerializeTabular(unittest.TestCase):
     #     # self.result.serialize(outfile)
     #     # check_file()
 
-    def test_serialize_table_json(self) -> None:
-        format = "json"
+    # def test_serialize_table_json(self) -> None:
+    #     format = "json"
 
-        json_data = {
-            "head": {"vars": ["subject", "predicate", "object"]},
-            "results": {
-                "bindings": [
-                    {
-                        "subject": {
-                            "type": "uri",
-                            "value": "http://example.com/e1",
-                        },
-                        "predicate": {
-                            "type": "uri",
-                            "value": "http://example.com/a1",
-                        },
-                        "object": {
-                            "type": "uri",
-                            "value": "http://example.com/e2",
-                        },
-                    },
-                    {
-                        "subject": {
-                            "type": "uri",
-                            "value": "http://example.com/e1",
-                        },
-                        "predicate": {
-                            "type": "uri",
-                            "value": "http://example.com/a1",
-                        },
-                        "object": {
-                            "type": "uri",
-                            "value": "http://example.com/e3",
-                        },
-                    },
-                ]
-            },
-        }
+    #     json_data = {
+    #         "head": {"vars": ["subject", "predicate", "object"]},
+    #         "results": {
+    #             "bindings": [
+    #                 {
+    #                     "subject": {
+    #                         "type": "uri",
+    #                         "value": "http://example.com/e1",
+    #                     },
+    #                     "predicate": {
+    #                         "type": "uri",
+    #                         "value": "http://example.com/a1",
+    #                     },
+    #                     "object": {
+    #                         "type": "uri",
+    #                         "value": "http://example.com/e2",
+    #                     },
+    #                 },
+    #                 {
+    #                     "subject": {
+    #                         "type": "uri",
+    #                         "value": "http://example.com/e1",
+    #                     },
+    #                     "predicate": {
+    #                         "type": "uri",
+    #                         "value": "http://example.com/a1",
+    #                     },
+    #                     "object": {
+    #                         "type": "uri",
+    #                         "value": "http://example.com/e3",
+    #                     },
+    #                 },
+    #             ]
+    #         },
+    #     }
 
-        def check(returned: str) -> None:
-            with self.subTest(caller=inspect.stack()[1]):
-                obj = json.loads(returned)
-                self.assertEqual(obj, json_data)
+    #     def check(returned: str) -> None:
+    #         with self.subTest(caller=inspect.stack()[1]):
+    #             obj = json.loads(returned)
+    #             self.assertEqual(obj, json_data)
 
-        check(self.result.serialize(format=format))
-        check(self.result.serialize(None, format=format))
-        check(self.result.serialize(None, None, format=format))
-        check(self.result.serialize(None, None, format))
-        check(self.result.serialize(destination=None, format=format))
-        check(self.result.serialize(destination=None, encoding=None, format=format))
+    #     check(self.result.serialize(format=format))
+    #     check(self.result.serialize(None, format=format))
+    #     check(self.result.serialize(None, None, format=format))
+    #     check(self.result.serialize(None, None, format))
+    #     check(self.result.serialize(destination=None, format=format))
+    #     check(self.result.serialize(destination=None, encoding=None, format=format))
 
 
 if __name__ == "__main__":

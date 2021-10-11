@@ -3,6 +3,7 @@ from typing import IO, Optional, TextIO, Union
 
 from rdflib.query import Result, ResultException, ResultSerializer, ResultParser
 from rdflib import Literal, URIRef, BNode, Variable
+from rdflib.util import as_textio
 
 
 """A Serializer for SPARQL results in JSON:
@@ -46,9 +47,7 @@ class JSONResultSerializer(ResultSerializer):
             ]
 
         r = json.dumps(res, allow_nan=False, ensure_ascii=False)
-        if encoding is not None:
-            stream.write(r.encode(encoding))
-        else:
+        with as_textio(stream, encoding=encoding) as stream:
             stream.write(r)
 
     def _bindingToJSON(self, b):

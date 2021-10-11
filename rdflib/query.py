@@ -256,7 +256,7 @@ class Result(object):
     ) -> str:
         ...
 
-    # non-none destination
+    # non-none binary destination
     @overload
     def serialize(
         self,
@@ -267,7 +267,7 @@ class Result(object):
     ) -> None:
         ...
 
-    # non-none destination
+    # non-none text destination
     @overload
     def serialize(
         self,

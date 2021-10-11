@@ -8,7 +8,7 @@ from io import IOBase
 from pathlib import Path, PurePath
 from tempfile import TemporaryDirectory
 from test.testutils import GraphHelper, get_unique_plugins
-from typing import (IO, Any, Dict, Iterable, NamedTuple, Optional, Set, Tuple, Union,
+from typing import (IO, Any, Dict, Iterable, NamedTuple, Optional, Set, TextIO, Tuple, Union,
                     cast)
 
 from rdflib import Graph
@@ -25,7 +25,7 @@ class DestinationType(str, enum.Enum):
     PURE_PATH = enum.auto()
     PATH_STR = enum.auto()
     IO_BYTES = enum.auto()
-    IO_STR = enum.auto()
+    TEXT_IO = enum.auto()
 
 
 class DestinationFactory:
@@ -38,7 +38,7 @@ class DestinationFactory:
         self,
         type: DestinationType,
         stack: Optional[ExitStack] = None,
-    ) -> Tuple[Union[str, Path, PurePath, IO[bytes], IO[str]], Path]:
+    ) -> Tuple[Union[str, Path, PurePath, IO[bytes], TextIO], Path]:
         self._counter += 1
         count = self._counter
         path = self.tmpdir / f"file-{type}-{count:05d}"
@@ -50,7 +50,7 @@ class DestinationFactory:
             return (f"{path}", path)
         if type is DestinationType.IO_BYTES:
             return (path.open("wb") if stack is None else stack.enter_context(path.open("wb")), path)
-        if type is DestinationType.IO_STR:
+        if type is DestinationType.TEXT_IO:
             return (path.open("w") if stack is None else stack.enter_context(path.open("w")), path)
         raise ValueError(f"unsupported type {type}")
 
@@ -301,7 +301,7 @@ class TestSerialize(unittest.TestCase):
                 itertools.product(
                     {format_info.serializer_name},
                     format_info.encodings,
-                    set(DestinationType).difference({DestinationType.IO_STR}),
+                    set(DestinationType).difference({DestinationType.TEXT_IO}),
                 )
                 for format_info in format_infos.values()
             )

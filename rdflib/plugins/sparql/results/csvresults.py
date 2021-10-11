@@ -16,6 +16,8 @@ from rdflib import Variable, BNode, URIRef, Literal
 
 from rdflib.query import Result, ResultSerializer, ResultParser
 
+from rdflib.util import as_textio
+
 
 class CSVResultParser(ResultParser):
     def __init__(self):
@@ -71,19 +73,15 @@ class CSVResultSerializer(ResultSerializer):
         # in py3 csv.writer is unicode aware and writes STRINGS,
         # so we encode afterwards
 
-        import codecs
+        with as_textio(stream, encoding=encoding) as stream:
+            out = csv.writer(stream, delimiter=self.delim)
 
-        if isinstance(stream, RawIOBase) or isinstance(stream, BufferedIOBase):  # type: ignore[unreachable]
-            stream = codecs.getwriter(encoding)(stream)  # type: ignore[unreachable]
-
-        out = csv.writer(cast(IO[str], stream), delimiter=self.delim)
-
-        vs = [self.serializeTerm(v, encoding) for v in self.result.vars]
-        out.writerow(vs)
-        for row in self.result.bindings:
-            out.writerow(
-                [self.serializeTerm(row.get(v), encoding) for v in self.result.vars]
-            )
+            vs = [self.serializeTerm(v, encoding) for v in self.result.vars]
+            out.writerow(vs)
+            for row in self.result.bindings:
+                out.writerow(
+                    [self.serializeTerm(row.get(v), encoding) for v in self.result.vars]
+                )
 
     def serializeTerm(self, term, encoding):
         if term is None:
