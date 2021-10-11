@@ -37,8 +37,20 @@ from time import gmtime
 from time import localtime
 from time import time
 from time import timezone
+from io import TextIOWrapper
 
 from os.path import splitext
+from typing import (
+    IO,
+    Generator,
+    Iterable,
+    Iterator,
+    Optional,
+    TextIO,
+    Union,
+    cast,
+    overload,
+)
 
 from rdflib.exceptions import ContextTypeError
 from rdflib.exceptions import ObjectTypeError
@@ -51,6 +63,7 @@ from rdflib.term import BNode
 from rdflib.term import Literal
 from rdflib.term import URIRef
 from rdflib.compat import sign
+from contextlib import contextmanager
 
 __all__ = [
     "list2set",
@@ -490,6 +503,22 @@ def get_tree(
             tree.append(t)
 
     return (mapper(root), sorted(tree, key=sortkey))
+
+
+@contextmanager
+def as_textio(
+    anyio: Union[IO[bytes], TextIO],
+    encoding: Optional[str] = None,
+) -> Generator[TextIO, None, None]:
+    if hasattr(anyio, "encoding"):
+        yield cast(TextIO, anyio)
+    else:
+        textio_wrapper = TextIOWrapper(cast(IO[bytes], anyio), encoding=encoding)
+        yield textio_wrapper
+        textio_wrapper.flush()
+        textio_wrapper.detach()
+
+
 
 
 def test():

@@ -1,14 +1,98 @@
+import itertools
+from typing import Dict, Iterable, List, NamedTuple, Optional, Set
+from rdflib.graph import test
+from rdflib.query import Result, ResultRow
 from test.testutils import GraphHelper
+from rdflib.term import Node
 import unittest
 from rdflib import Graph, Namespace
 from tempfile import TemporaryDirectory
 from pathlib import Path
+from io import BytesIO, StringIO
 import json
 import io
 import csv
 import inspect
 
 EG = Namespace("http://example.com/")
+
+
+class FormatInfo(NamedTuple):
+    serializer_name: str
+    deserializer_name: str
+    encodings: Set[str]
+
+
+class FormatInfos(Dict[str, FormatInfo]):
+    def add_format(
+        self,
+        serializer_name: str,
+        deserializer_name: str,
+        *,
+        encodings: Set[str],
+    ) -> None:
+        self[serializer_name] = FormatInfo(
+            serializer_name,
+            deserializer_name,
+            encodings,
+        )
+
+    def select(
+        self,
+        *,
+        name: Optional[Set[str]] = None,
+    ) -> Iterable[FormatInfo]:
+        for format in self.values():
+            if name is not None and format.serializer_name in name:
+                yield format
+
+    # @classmethod
+    # def make_graph(self, format_info: FormatInfo) -> Graph:
+    #     if GraphType.QUAD in format_info.graph_types:
+    #         return ConjunctiveGraph()
+    #     else:
+    #         return Graph()
+
+    @classmethod
+    def make(cls) -> "FormatInfos":
+        result = cls()
+        result.add_format("csv", "csv", encodings={"utf-8"})
+        result.add_format("json", "json", encodings={"utf-8"})
+        result.add_format("xml", "xml", encodings={"utf-8"})
+        result.add_format("txt", "txt", encodings={"utf-8"})
+
+        return result
+
+
+format_infos = FormatInfos.make()
+
+
+class ResultHelper:
+    @classmethod
+    def to_list(cls, result: Result) -> List[Dict[str, Node]]:
+        output: List[Dict[str, Node]] = []
+        row: ResultRow
+        for row in result:
+            output.append(row.asdict())
+        return output
+
+
+def check_txt(test_case: unittest.TestCase, result: Result, txt: str) -> None:
+    """
+    This does somewhat of a smoke check that txt is the txt serialization of the
+    given result. This is by no means perfect but better than nothing.
+    """
+    txt_lines = txt.splitlines()
+    test_case.assertEqual(len(txt_lines) - 2, len(result))
+    test_case.assertRegex(txt_lines[1], r"^[-]+$")
+    header = txt_lines[0]
+    for var in result.vars:
+        test_case.assertIn(var, header)
+    for row_index, row in enumerate(result):
+        txt_row = txt_lines[row_index + 2]
+        value: Node
+        for key, value in row.asdict().items():
+            test_case.assertIn(f"{value}", txt_row)
 
 
 class TestSerializeTabular(unittest.TestCase):
@@ -46,11 +130,32 @@ class TestSerializeTabular(unittest.TestCase):
     def tearDown(self) -> None:
         self._tmpdir.cleanup()
 
-    def formats(self) -> None:
-        pass
+    # def formats(self) -> None:
+    #     pass
 
     def test_str(self) -> None:
-        pass
+        for format in format_infos.keys():
+
+            def check(data: str) -> None:
+                with self.subTest(format=format, caller=inspect.stack()[1]):
+                    self.assertIsInstance(data, str)
+                    format_info = format_infos[format]
+                    if format_info.deserializer_name == "txt":
+                        check_txt(self, self.result, data)
+                    else:
+                        result_check = Result.parse(
+                            StringIO(data), format=format_info.deserializer_name
+                        )
+                        self.assertEqual(self.result, result_check)
+
+            if format == "txt":
+                check(self.result.serialize())
+                check(self.result.serialize(None, None, None))
+            check(self.result.serialize(None, None, format))
+            check(self.result.serialize(format=format))
+            check(self.result.serialize(destination=None, format=format))
+            check(self.result.serialize(destination=None, encoding=None, format=format))
+
         # test_formats = format_infos.keys()
         # for format in test_formats:
 
@@ -66,64 +171,100 @@ class TestSerializeTabular(unittest.TestCase):
         #     check(self.graph.serialize(None, format=format))
         #     check(self.graph.serialize(None, format=format, encoding=None))
 
-    def test_serialize_table_csv_str(self) -> None:
-        format = "csv"
+    # def test_serialize_table_csv_str(self) -> None:
+    #     format = "csv"
 
-        def check(data: str) -> None:
-            with self.subTest(caller=inspect.stack()[1]):
-                self.assertIsInstance(data, str)
-                data_io = io.StringIO(data)
-                data_reader = csv.reader(data_io, "unix")
-                data_rows = list(data_reader)
-                self.assertEqual(data_rows, self.result_table)
+    #     def check(data: str) -> None:
+    #         with self.subTest(caller=inspect.stack()[1]):
+    #             self.assertIsInstance(data, str)
+    #             data_io = io.StringIO(data)
+    #             data_reader = csv.reader(data_io, "unix")
+    #             data_rows = list(data_reader)
+    #             self.assertEqual(data_rows, self.result_table)
 
-        # check(self.result.serialize())
-        # check(self.result.serialize(None))
-        # check(self.result.serialize(None, None))
-        check(self.result.serialize(None, None, None))
-        check(self.result.serialize(None, None, format))
-        check(self.result.serialize(format=format))
-        # check(self.result.serialize(destination=None))
-        check(self.result.serialize(destination=None, format=format))
-        check(self.result.serialize(destination=None, encoding=None, format=format))
+    #     # check(self.result.serialize())
+    #     # check(self.result.serialize(None))
+    #     # check(self.result.serialize(None, None))
+    #     check(self.result.serialize(None, None, None))
+    #     check(self.result.serialize(None, None, format))
+    #     check(self.result.serialize(format=format))
+    #     # check(self.result.serialize(destination=None))
+    #     check(self.result.serialize(destination=None, format=format))
+    #     check(self.result.serialize(destination=None, encoding=None, format=format))
 
-    def test_serialize_table_csv_bytes(self) -> None:
-        encoding = "utf-8"
-        format = "csv"
+    def test_bytes(self) -> None:
+        for (format, encoding) in itertools.chain(
+            *(
+                itertools.product({format_info.serializer_name}, format_info.encodings)
+                for format_info in format_infos.values()
+            )
+        ):
+            def check(data: bytes) -> None:
+                with self.subTest(format=format, caller=inspect.stack()[1]):
+                    self.assertIsInstance(data, bytes)
+                    format_info = format_infos[format]
+                    if format_info.deserializer_name == "txt":
+                        check_txt(self, self.result, data.decode(encoding))
+                    else:
+                        result_check = Result.parse(
+                            BytesIO(data), format=format_info.deserializer_name
+                        )
+                        self.assertEqual(self.result, result_check)
 
-        def check(data: bytes) -> None:
-            with self.subTest(caller=inspect.stack()[1]):
-                self.assertIsInstance(data, bytes)
-                data_str = data.decode(encoding)
-                data_io = io.StringIO(data_str)
-                data_reader = csv.reader(data_io, "unix")
-                data_rows = list(data_reader)
-                self.assertEqual(data_rows, self.result_table)
+            if format == "txt":
+                check(self.result.serialize(encoding=encoding))
+                check(self.result.serialize(None, encoding, None))
+                check(self.result.serialize(None, encoding))
+            check(self.result.serialize(None, encoding, format))
+            check(self.result.serialize(format=format, encoding=encoding))
+            check(
+                self.result.serialize(
+                    destination=None, format=format, encoding=encoding
+                )
+            )
+            check(
+                self.result.serialize(
+                    destination=None, encoding=encoding, format=format
+                )
+            )
 
-        # check(self.result.serialize(None, encoding))
-        # check(self.result.serialize(None, encoding, None))
-        check(self.result.serialize(None, encoding, format))
-        check(self.result.serialize(encoding=encoding, format=format))
-        # check(self.result.serialize(destination=None, encoding=encoding))
-        check(self.result.serialize(destination=None, encoding=encoding, format=format))
+    # def test_serialize_table_csv_bytes(self) -> None:
+    #     encoding = "utf-8"
+    #     format = "csv"
 
-    def test_serialize_table_csv_file(self) -> None:
-        outfile = self.tmpdir / "output.csv"
+    #     def check(data: bytes) -> None:
+    #         with self.subTest(caller=inspect.stack()[1]):
+    #             self.assertIsInstance(data, bytes)
+    #             data_str = data.decode(encoding)
+    #             data_io = io.StringIO(data_str)
+    #             data_reader = csv.reader(data_io, "unix")
+    #             data_rows = list(data_reader)
+    #             self.assertEqual(data_rows, self.result_table)
 
-        self.assertFalse(outfile.exists())
+    #     # check(self.result.serialize(None, encoding))
+    #     # check(self.result.serialize(None, encoding, None))
+    #     check(self.result.serialize(None, encoding, format))
+    #     check(self.result.serialize(encoding=encoding, format=format))
+    #     # check(self.result.serialize(destination=None, encoding=encoding))
+    #     check(self.result.serialize(destination=None, encoding=encoding, format=format))
 
-        def check(none: None) -> None:
-            with self.subTest(caller=inspect.stack()[1]):
-                self.assertTrue(outfile.exists())
-                with outfile.open("r") as file_io:
-                    data_reader = csv.reader(file_io, "unix")
-                    data_rows = list(data_reader)
-                self.assertEqual(data_rows, self.result_table)
+    # def test_serialize_table_csv_file(self) -> None:
+    #     outfile = self.tmpdir / "output.csv"
 
-        check(self.result.serialize(outfile))
+    #     self.assertFalse(outfile.exists())
 
-        # self.result.serialize(outfile)
-        # check_file()
+    #     def check(none: None) -> None:
+    #         with self.subTest(caller=inspect.stack()[1]):
+    #             self.assertTrue(outfile.exists())
+    #             with outfile.open("r") as file_io:
+    #                 data_reader = csv.reader(file_io, "unix")
+    #                 data_rows = list(data_reader)
+    #             self.assertEqual(data_rows, self.result_table)
+
+    #     check(self.result.serialize(outfile))
+
+    #     # self.result.serialize(outfile)
+    #     # check_file()
 
     def test_serialize_table_json(self) -> None:
         format = "json"

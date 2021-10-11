@@ -5,6 +5,7 @@ import tempfile
 import warnings
 import types
 import pathlib
+import traceback
 from typing import IO, TYPE_CHECKING, Optional, TextIO, Union, cast, overload
 
 from io import BytesIO
@@ -116,7 +117,6 @@ class ResultRow(tuple):
     """
 
     def __new__(cls, values, labels):
-
         instance = super(ResultRow, cls).__new__(cls, (values.get(v) for v in labels))
         instance.labels = dict((str(x[1]), x[0]) for x in enumerate(labels))
         return instance
@@ -165,7 +165,7 @@ class Result(object):
 
     """
 
-    def __init__(self, type_):
+    def __init__(self, type_: str):
 
         if type_ not in ("CONSTRUCT", "DESCRIBE", "SELECT", "ASK"):
             raise ResultException("Unknown Result type: %s" % type_)

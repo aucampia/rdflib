@@ -258,9 +258,7 @@ class TestSerialize(unittest.TestCase):
         self.assertIn("badformat", f"{raised.exception}")
 
     def test_str(self) -> None:
-        test_formats = format_infos.keys()
-        for format in test_formats:
-
+        for format in format_infos.keys():
             def check(data: str) -> None:
                 with self.subTest(format=format, caller=inspect.stack()[1]):
                     self.check_data_string(data, format=format)
