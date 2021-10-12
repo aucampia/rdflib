@@ -29,12 +29,12 @@ Authors: Drew Perttula, Gunnar Aastrand Grimnes
 
 
 class XMLResultParser(ResultParser):
-    def parse(self, source, content_type=None):
+    def parse(self, source, content_type: Optional[str] = None):
         return XMLResult(source)
 
 
 class XMLResult(Result):
-    def __init__(self, source, content_type=None):
+    def __init__(self, source, content_type: Optional[str] = None):
 
         try:
             parser = etree.XMLParser(huge_tree=True)
@@ -103,7 +103,8 @@ class XMLResultSerializer(ResultSerializer):
         ResultSerializer.__init__(self, result)
 
     def serialize(self, stream: Union[IO[bytes], TextIO], encoding: Optional[str]):
-
+        if encoding is None:
+            encoding = "utf-8"
         writer = SPARQLXMLWriter(stream, encoding)
         if self.result.type == "ASK":
             writer.write_header([])

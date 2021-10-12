@@ -309,6 +309,27 @@ class TestSerializeTabular(unittest.TestCase):
                 if dest_type == DestinationType.IO_BYTES:
                     check(
                         self.result.serialize(
+                            cast(IO[bytes], dest()),
+                            encoding,
+                            format,
+                        )
+                    )
+                    check(
+                        self.result.serialize(
+                            cast(IO[bytes], dest()),
+                            encoding,
+                            format=format,
+                        )
+                    )
+                    check(
+                        self.result.serialize(
+                            cast(IO[bytes], dest()),
+                            encoding=encoding,
+                            format=format,
+                        )
+                    )
+                    check(
+                        self.result.serialize(
                             destination=cast(IO[bytes], dest()),
                             encoding=encoding,
                             format=format,
@@ -319,6 +340,9 @@ class TestSerializeTabular(unittest.TestCase):
                         destination=dest(), encoding=None, format=format
                     )
                 )
+                check(self.result.serialize(destination=dest(), format=format))
+                check(self.result.serialize(dest(), format=format))
+                check(self.result.serialize(dest(), None, format))
 
     # def test_serialize_table_csv_file(self) -> None:
     #     outfile = self.tmpdir / "output.csv"

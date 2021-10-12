@@ -197,7 +197,12 @@ class Result(object):
     )
 
     @staticmethod
-    def parse(source=None, format=None, content_type=None, **kwargs):
+    def parse(
+        source=None,
+        format: Optional[str] = None,
+        content_type: Optional[str] = None,
+        **kwargs,
+    ):
         from rdflib import plugin
 
         if format:
