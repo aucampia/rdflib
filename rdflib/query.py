@@ -6,7 +6,7 @@ import warnings
 import types
 import pathlib
 import traceback
-from typing import IO, TYPE_CHECKING, Optional, TextIO, Union, cast, overload
+from typing import IO, TYPE_CHECKING, List, Optional, TextIO, Union, cast, overload
 
 from io import BytesIO
 
@@ -16,6 +16,7 @@ __all__ = ["Processor", "Result", "ResultParser", "ResultSerializer", "ResultExc
 
 if TYPE_CHECKING:
     from .graph import Graph
+    from .term import Variable
 
 
 class Processor(object):
@@ -171,7 +172,7 @@ class Result(object):
             raise ResultException("Unknown Result type: %s" % type_)
 
         self.type = type_
-        self.vars = None
+        self.vars: Optional[List[Variable]] = None
         self._bindings = None
         self._genbindings = None
         self.askAnswer: bool = None
