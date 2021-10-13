@@ -175,12 +175,14 @@ class FormatInfos(Dict[str, FormatInfo]):
 format_infos = FormatInfos.make()
 
 
-def assert_graphs_equal(test_case: unittest.TestCase, lhs: Graph, rhs: Graph) -> None:
+def assert_graphs_equal(
+    test_case: unittest.TestCase, lhs: Graph, rhs: Graph, check_context: bool = True
+) -> None:
     lhs_has_quads = hasattr(lhs, "quads")
     rhs_has_quads = hasattr(rhs, "quads")
     lhs_set: Set[Any]
     rhs_set: Set[Any]
-    if lhs_has_quads and rhs_has_quads:
+    if lhs_has_quads and rhs_has_quads and check_context:
         lhs = cast(ConjunctiveGraph, lhs)
         rhs = cast(ConjunctiveGraph, rhs)
         lhs_set, rhs_set = GraphHelper.quad_sets([lhs, rhs])
@@ -211,6 +213,7 @@ class TestSerialize(unittest.TestCase):
         } ORDER BY ?object
         """
         self.result = self.graph.query(query)
+        self.assertIsNotNone(self.result.graph)
 
         self._tmpdir = TemporaryDirectory()
         self.tmpdir = Path(self._tmpdir.name)
@@ -246,24 +249,40 @@ class TestSerialize(unittest.TestCase):
 
     def test_str(self) -> None:
         for format in format_infos.keys():
+            format_info = format_infos[format]
 
-            def check(data: str) -> None:
+            def check(data: str, check_context: bool = True) -> None:
                 with self.subTest(format=format, caller=inspect.stack()[1]):
                     self.assertIsInstance(data, str)
-                    format_info = format_infos[format]
+
                     graph_check = FormatInfos.make_graph(format_info)
                     graph_check.parse(data=data, format=format_info.deserializer_name)
-                    assert_graphs_equal(self, self.graph, graph_check)
+                    assert_graphs_equal(self, self.graph, graph_check, check_context)
 
             if format == "turtle":
                 check(self.graph.serialize())
+                check(self.graph.serialize(None))
             check(self.graph.serialize(None, format))
             check(self.graph.serialize(None, format, encoding=None))
             check(self.graph.serialize(None, format, None, None))
             check(self.graph.serialize(None, format=format))
             check(self.graph.serialize(None, format=format, encoding=None))
 
-            check(self.result.serialize(None, None, format))
+            if GraphType.TRIPLE not in format_info.graph_types:
+                # tests below are only for formats that can work with context-less graphs.
+                continue
+
+            if format == "turtle":
+                check(self.result.serialize(), False)
+                check(self.result.serialize(None), False)
+            check(self.result.serialize(None, format=format), False)
+            check(self.result.serialize(None, None, format), False)
+            check(self.result.serialize(None, None, format=format), False)
+            check(self.result.serialize(None, encodin=None, format=format), False)
+            check(
+                self.result.serialize(destination=None, encoding=None, format=format),
+                False,
+            )
 
     def test_bytes(self) -> None:
         for (format, encoding) in itertools.chain(
@@ -272,8 +291,9 @@ class TestSerialize(unittest.TestCase):
                 for format_info in format_infos.values()
             )
         ):
+            format_info = format_infos[format]
 
-            def check(data: bytes) -> None:
+            def check(data: bytes, check_context: bool = True) -> None:
                 with self.subTest(
                     format=format, encoding=encoding, caller=inspect.stack()[1]
                 ):
@@ -282,12 +302,11 @@ class TestSerialize(unittest.TestCase):
 
                     # double check that encoding is right
                     data_str = data.decode(encoding)
-                    format_info = format_infos[format]
                     graph_check = FormatInfos.make_graph(format_info)
                     graph_check.parse(
                         data=data_str, format=format_info.deserializer_name
                     )
-                    assert_graphs_equal(self, self.graph, graph_check)
+                    assert_graphs_equal(self, self.graph, graph_check, check_context)
 
                     # actual check
                     # TODO FIXME : handle other encodings
@@ -296,7 +315,9 @@ class TestSerialize(unittest.TestCase):
                         graph_check.parse(
                             data=data, format=format_info.deserializer_name
                         )
-                        assert_graphs_equal(self, self.graph, graph_check)
+                        assert_graphs_equal(
+                            self, self.graph, graph_check, check_context
+                        )
 
             if format == "turtle":
                 check(self.graph.serialize(encoding=encoding))
@@ -304,6 +325,23 @@ class TestSerialize(unittest.TestCase):
             check(self.graph.serialize(None, format, None, encoding=encoding))
             check(self.graph.serialize(None, format, encoding=encoding))
             check(self.graph.serialize(None, format=format, encoding=encoding))
+
+            if GraphType.TRIPLE not in format_info.graph_types:
+                # tests below are only for formats that can work with context-less graphs.
+                continue
+
+            if format == "turtle":
+                check(self.result.serialize(encoding=encoding), False)
+                check(self.result.serialize(None, encoding), False)
+            check(self.result.serialize(encoding=encoding, format=format), False)
+            check(self.result.serialize(None, encoding, format), False)
+            check(self.result.serialize(None, encoding=encoding, format=format), False)
+            check(
+                self.result.serialize(
+                    destination=None, encoding=encoding, format=format
+                ),
+                False,
+            )
 
     def test_file(self) -> None:
 
@@ -319,6 +357,7 @@ class TestSerialize(unittest.TestCase):
                 for format_info in format_infos.values()
             )
         ):
+            format_info = format_infos[format]
             with ExitStack() as stack:
                 dest_path: Path
                 _dest: Union[str, Path, PurePath, IO[bytes]]
@@ -329,18 +368,17 @@ class TestSerialize(unittest.TestCase):
                     _dest, dest_path = dest_factory.make(dest_type, stack)
                     return _dest
 
-                def check(_graph: Graph) -> None:
+                def _check(check_context: bool = True) -> None:
                     with self.subTest(
                         format=format,
                         encoding=encoding,
                         dest_type=dest_type,
-                        caller=inspect.stack()[1],
+                        caller=inspect.stack()[2],
                     ):
                         if isinstance(_dest, IOBase):
                             _dest.flush()
 
                         source = Path(dest_path)
-                        format_info = format_infos[format]
 
                         # double check that encoding is right
                         data_str = source.read_text(encoding=encoding)
@@ -348,7 +386,9 @@ class TestSerialize(unittest.TestCase):
                         graph_check.parse(
                             data=data_str, format=format_info.deserializer_name
                         )
-                        assert_graphs_equal(self, self.graph, graph_check)
+                        assert_graphs_equal(
+                            self, self.graph, graph_check, check_context
+                        )
 
                         self.assertTrue(source.exists())
                         # actual check
@@ -358,22 +398,58 @@ class TestSerialize(unittest.TestCase):
                             graph_check.parse(
                                 source=source, format=format_info.deserializer_name
                             )
-                            assert_graphs_equal(self, self.graph, graph_check)
+                            assert_graphs_equal(
+                                self, self.graph, graph_check, check_context
+                            )
 
                         dest_path.unlink()
 
-                if (format, encoding) == ("turtle", "utf-8"):
-                    check(self.graph.serialize(dest()))
-                    check(self.graph.serialize(dest(), encoding=None))
-                if format == "turtle":
-                    check(self.graph.serialize(dest(), encoding=encoding))
-                if encoding == sys.getdefaultencoding():
-                    check(self.graph.serialize(dest(), format))
-                    check(self.graph.serialize(dest(), format, None))
-                    check(self.graph.serialize(dest(), format, None, None))
+                def check_a(graph: Graph) -> None:
+                    _check()
 
-                check(self.graph.serialize(dest(), format, encoding=encoding))
-                check(self.graph.serialize(dest(), format, None, encoding))
+                if (format, encoding) == ("turtle", "utf-8"):
+                    check_a(self.graph.serialize(dest()))
+                    check_a(self.graph.serialize(dest(), encoding=None))
+                if format == "turtle":
+                    check_a(self.graph.serialize(dest(), encoding=encoding))
+                if encoding == sys.getdefaultencoding():
+                    check_a(self.graph.serialize(dest(), format))
+                    check_a(self.graph.serialize(dest(), format, None))
+                    check_a(self.graph.serialize(dest(), format, None, None))
+
+                check_a(self.graph.serialize(dest(), format, encoding=encoding))
+                check_a(self.graph.serialize(dest(), format, None, encoding))
+
+                if GraphType.TRIPLE not in format_info.graph_types:
+                    # tests below are only for formats that can work with context-less graphs.
+                    continue
+
+                def check_b(none: None) -> None:
+                    _check(False)
+
+                if format == "turtle":
+                    check_b(self.result.serialize(dest(), encoding))
+                check_b(self.result.serialize(dest(), encoding=encoding, format=format))
+                check_b(
+                    self.result.serialize(
+                        destination=dest(), encoding=encoding, format=format
+                    )
+                )
+                check_b(
+                    self.result.serialize(
+                        destination=dest(), encoding=None, format=format
+                    )
+                )
+                check_b(self.result.serialize(destination=dest(), format=format))
+                # if dest_type in {DestinationType.PATH_STR, DestinationType.PATH}:
+                #     pass
+                #     if format == "turtle":
+                #         check_b(
+                #             self.result.serialize(
+                #                 destionation=cast(str, dest()),
+                #                 encoding=encoding,
+                #             )
+                #         )
 
 
 if __name__ == "__main__":

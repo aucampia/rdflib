@@ -175,8 +175,8 @@ class Result(object):
         self.vars: Optional[List[Variable]] = None
         self._bindings = None
         self._genbindings = None
-        self.askAnswer: bool = None
-        self.graph: "Graph" = None
+        self.askAnswer: bool = None  # type: ignore[assignment]
+        self.graph: "Graph" = None  # type: ignore[assignment]
 
     def _get_bindings(self):
         if self._genbindings:
@@ -348,6 +348,7 @@ class Result(object):
             result = self.graph.serialize(
                 destination=destination, format=format, encoding=encoding, **args
             )
+            from rdflib.graph import Graph
             if isinstance(result, Graph):
                 return None
             return result
@@ -469,7 +470,7 @@ class ResultParser(object):
 
 
 class ResultSerializer(object):
-    def __init__(self, result):
+    def __init__(self, result: Result):
         self.result = result
 
     @overload

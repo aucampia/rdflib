@@ -10,7 +10,7 @@ http://www.w3.org/TR/sparql11-results-csv-tsv/
 import codecs
 import csv
 from io import BufferedIOBase, RawIOBase
-from typing import IO, Optional, TextIO, Union, cast
+from typing import IO, TYPE_CHECKING, Optional, TextIO, Union, cast
 
 from rdflib import Variable, BNode, URIRef, Literal
 
@@ -75,7 +75,8 @@ class CSVResultSerializer(ResultSerializer):
 
         with as_textio(stream, encoding=encoding) as stream:
             out = csv.writer(stream, delimiter=self.delim)
-
+            if TYPE_CHECKING:
+                assert self.result.vars is not None
             vs = [self.serializeTerm(v, encoding) for v in self.result.vars]
             out.writerow(vs)
             for row in self.result.bindings:

@@ -29,7 +29,8 @@ Authors: Drew Perttula, Gunnar Aastrand Grimnes
 
 
 class XMLResultParser(ResultParser):
-    def parse(self, source, content_type: Optional[str] = None):
+    # TODO FIXME: content_type should be a keyword only arg.
+    def parse(self, source, content_type: Optional[str] = None):  # type: ignore[override]
         return XMLResult(source)
 
 
@@ -37,7 +38,8 @@ class XMLResult(Result):
     def __init__(self, source, content_type: Optional[str] = None):
 
         try:
-            parser = etree.XMLParser(huge_tree=True)
+            # try use as if etree is from lxml, and if not use it as normal.
+            parser = etree.XMLParser(huge_tree=True)  # type: ignore[call-arg]
             tree = etree.parse(source, parser)
         except TypeError:
             tree = etree.parse(source)
@@ -56,7 +58,7 @@ class XMLResult(Result):
 
         if type_ == "SELECT":
             self.bindings = []
-            for result in results:
+            for result in results:  # type: ignore[union-attr]
                 r = {}
                 for binding in result:
                     r[Variable(binding.get("name"))] = parseTerm(binding[0])
@@ -70,7 +72,7 @@ class XMLResult(Result):
             ]
 
         else:
-            self.askAnswer = boolean.text.lower().strip() == "true"
+            self.askAnswer = boolean.text.lower().strip() == "true"  # type: ignore[union-attr]
 
 
 def parseTerm(element):
@@ -102,7 +104,9 @@ class XMLResultSerializer(ResultSerializer):
     def __init__(self, result):
         ResultSerializer.__init__(self, result)
 
-    def serialize(self, stream: Union[IO[bytes], TextIO], encoding: Optional[str]):
+    def serialize(
+        self, stream: Union[IO[bytes], TextIO], encoding: Optional[str] = None, **kwargs
+    ):
         if encoding is None:
             encoding = "utf-8"
         writer = SPARQLXMLWriter(stream, encoding)

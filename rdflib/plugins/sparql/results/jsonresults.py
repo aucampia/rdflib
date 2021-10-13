@@ -1,5 +1,5 @@
 import json
-from typing import IO, Optional, TextIO, Union
+from typing import IO, Any, Dict, Optional, TextIO, Union
 
 from rdflib.query import Result, ResultException, ResultSerializer, ResultParser
 from rdflib import Literal, URIRef, BNode, Variable
@@ -31,9 +31,9 @@ class JSONResultSerializer(ResultSerializer):
         ResultSerializer.__init__(self, result)
 
     def serialize(
-        self, stream: Union[IO[bytes], TextIO], encoding: Optional[str] = None
+        self, stream: Union[IO[bytes], TextIO], encoding: Optional[str] = None, **kwargs
     ):
-        res = {}
+        res: Dict[str, Any] = {}
         if self.result.type == "ASK":
             res["head"] = {}
             res["boolean"] = self.result.askAnswer
