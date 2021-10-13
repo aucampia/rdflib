@@ -205,6 +205,13 @@ class TestSerialize(unittest.TestCase):
         conjunctive_graph.add(self.quad)
         self.graph = conjunctive_graph
 
+        query = """
+        CONSTRUCT { ?subject ?predicate ?object } WHERE {
+            ?subject ?predicate ?object
+        } ORDER BY ?object
+        """
+        self.result = self.graph.query(query)
+
         self._tmpdir = TemporaryDirectory()
         self.tmpdir = Path(self._tmpdir.name)
 
@@ -226,48 +233,6 @@ class TestSerialize(unittest.TestCase):
                 set(),
                 f"serializers does not include any of {names}",
             )
-
-    # def check_data_string(self, data: str, format: str) -> None:
-    #     self.assertIsInstance(data, str)
-    #     format_info = format_infos[format]
-    #     graph_check = FormatInfos.make_graph(format_info)
-    #     graph_check.parse(data=data, format=format_info.deserializer_name)
-    #     assert_graphs_equal(self, self.graph, graph_check)
-
-    # def check_data_bytes(self, data: bytes, format: str, encoding: str) -> None:
-    #     self.assertIsInstance(data, bytes)
-
-    #     # double check that encoding is right
-    #     data_str = data.decode(encoding)
-    #     format_info = format_infos[format]
-    #     graph_check = FormatInfos.make_graph(format_info)
-    #     graph_check.parse(data=data_str, format=format_info.deserializer_name)
-    #     assert_graphs_equal(self, self.graph, graph_check)
-
-    #     # actual check
-    #     # TODO FIXME : handle other encodings
-    #     if encoding == "utf-8":
-    #         graph_check = FormatInfos.make_graph(format_info)
-    #         graph_check.parse(data=data, format=format_info.deserializer_name)
-    #         assert_graphs_equal(self, self.graph, graph_check)
-
-    # def check_file(self, source: PurePath, format: str, encoding: str) -> None:
-    #     source = Path(source)
-    #     format_info = format_infos[format]
-
-    #     # double check that encoding is right
-    #     data_str = source.read_text(encoding=encoding)
-    #     graph_check = FormatInfos.make_graph(format_info)
-    #     graph_check.parse(data=data_str, format=format_info.deserializer_name)
-    #     assert_graphs_equal(self, self.graph, graph_check)
-
-    #     self.assertTrue(source.exists())
-    #     # actual check
-    #     # TODO FIXME : This should work for all encodings, not just utf-8
-    #     if encoding == "utf-8":
-    #         graph_check = FormatInfos.make_graph(format_info)
-    #         graph_check.parse(source=source, format=format_info.deserializer_name)
-    #         assert_graphs_equal(self, self.graph, graph_check)
 
     def test_serialize_to_neturl(self) -> None:
         with self.assertRaises(ValueError) as raised:
@@ -298,6 +263,8 @@ class TestSerialize(unittest.TestCase):
             check(self.graph.serialize(None, format=format))
             check(self.graph.serialize(None, format=format, encoding=None))
 
+            check(self.result.serialize(None, None, format))
+
     def test_bytes(self) -> None:
         for (format, encoding) in itertools.chain(
             *(
@@ -317,14 +284,18 @@ class TestSerialize(unittest.TestCase):
                     data_str = data.decode(encoding)
                     format_info = format_infos[format]
                     graph_check = FormatInfos.make_graph(format_info)
-                    graph_check.parse(data=data_str, format=format_info.deserializer_name)
+                    graph_check.parse(
+                        data=data_str, format=format_info.deserializer_name
+                    )
                     assert_graphs_equal(self, self.graph, graph_check)
 
                     # actual check
                     # TODO FIXME : handle other encodings
                     if encoding == "utf-8":
                         graph_check = FormatInfos.make_graph(format_info)
-                        graph_check.parse(data=data, format=format_info.deserializer_name)
+                        graph_check.parse(
+                            data=data, format=format_info.deserializer_name
+                        )
                         assert_graphs_equal(self, self.graph, graph_check)
 
             if format == "turtle":
@@ -367,7 +338,6 @@ class TestSerialize(unittest.TestCase):
                     ):
                         if isinstance(_dest, IOBase):
                             _dest.flush()
-                        # self.check_file(dest_path, format, encoding)
 
                         source = Path(dest_path)
                         format_info = format_infos[format]
@@ -375,7 +345,9 @@ class TestSerialize(unittest.TestCase):
                         # double check that encoding is right
                         data_str = source.read_text(encoding=encoding)
                         graph_check = FormatInfos.make_graph(format_info)
-                        graph_check.parse(data=data_str, format=format_info.deserializer_name)
+                        graph_check.parse(
+                            data=data_str, format=format_info.deserializer_name
+                        )
                         assert_graphs_equal(self, self.graph, graph_check)
 
                         self.assertTrue(source.exists())
@@ -383,7 +355,9 @@ class TestSerialize(unittest.TestCase):
                         # TODO FIXME : This should work for all encodings, not just utf-8
                         if encoding == "utf-8":
                             graph_check = FormatInfos.make_graph(format_info)
-                            graph_check.parse(source=source, format=format_info.deserializer_name)
+                            graph_check.parse(
+                                source=source, format=format_info.deserializer_name
+                            )
                             assert_graphs_equal(self, self.graph, graph_check)
 
                         dest_path.unlink()
