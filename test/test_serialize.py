@@ -248,6 +248,13 @@ class TestSerialize(unittest.TestCase):
         self.assertIn("badformat", f"{raised.exception}")
 
     def test_str(self) -> None:
+        """
+        This function tests serialization of graphs to strings, either directly
+        or from query results.
+
+        This function also checks that the various string serialization
+        overloads are correct.
+        """
         for format in format_infos.keys():
             format_info = format_infos[format]
 
@@ -285,6 +292,13 @@ class TestSerialize(unittest.TestCase):
             )
 
     def test_bytes(self) -> None:
+        """
+        This function tests serialization of graphs to bytes, either directly or
+        from query results.
+
+        This function also checks that the various bytes serialization overloads
+        are correct.
+        """
         for (format, encoding) in itertools.chain(
             *(
                 itertools.product({format_info.serializer_name}, format_info.encodings)
@@ -344,7 +358,13 @@ class TestSerialize(unittest.TestCase):
             )
 
     def test_file(self) -> None:
+        """
+        This function tests serialization of graphs to destinations, either directly or
+        from query results.
 
+        This function also checks that the various bytes serialization overloads
+        are correct.
+        """
         dest_factory = DestinationFactory(self.tmpdir)
 
         for (format, encoding, dest_type) in itertools.chain(
@@ -429,6 +449,12 @@ class TestSerialize(unittest.TestCase):
 
                 if format == "turtle":
                     check_b(self.result.serialize(dest(), encoding))
+                    check_b(
+                        self.result.serialize(
+                            destination=cast(str, dest()),
+                            encoding=encoding,
+                        )
+                    )
                 check_b(self.result.serialize(dest(), encoding=encoding, format=format))
                 check_b(
                     self.result.serialize(
@@ -441,15 +467,6 @@ class TestSerialize(unittest.TestCase):
                     )
                 )
                 check_b(self.result.serialize(destination=dest(), format=format))
-                # if dest_type in {DestinationType.PATH_STR, DestinationType.PATH}:
-                #     pass
-                #     if format == "turtle":
-                #         check_b(
-                #             self.result.serialize(
-                #                 destionation=cast(str, dest()),
-                #                 encoding=encoding,
-                #             )
-                #         )
 
 
 if __name__ == "__main__":

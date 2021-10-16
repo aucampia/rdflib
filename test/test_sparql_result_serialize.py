@@ -83,12 +83,12 @@ class ResultHelper:
         return output
 
 
-def check_txt(test_case: unittest.TestCase, result: Result, txt: str) -> None:
+def check_txt(test_case: unittest.TestCase, result: Result, data: str) -> None:
     """
-    This does somewhat of a smoke check that txt is the txt serialization of the
+    This does somewhat of a smoke tests that data is the txt serialization of the
     given result. This is by no means perfect but better than nothing.
     """
-    txt_lines = txt.splitlines()
+    txt_lines = data.splitlines()
     test_case.assertEqual(len(txt_lines) - 2, len(result))
     test_case.assertRegex(txt_lines[1], r"^[-]+$")
     header = txt_lines[0]
@@ -277,44 +277,6 @@ class TestSerializeSelect(unittest.TestCase):
                 check(self.result.serialize(destination=dest(), format=format))
                 check(self.result.serialize(dest(), format=format))
                 check(self.result.serialize(dest(), None, format))
-
-
-class TestSerializeGraph(unittest.TestCase):
-    def setUp(self) -> None:
-        graph = Graph()
-        triples = [
-            (EG["e0"], EG["a0"], EG["e1"]),
-            (EG["e0"], EG["a0"], EG["e2"]),
-            (EG["e0"], EG["a0"], EG["e3"]),
-            (EG["e1"], EG["a1"], EG["e2"]),
-            (EG["e1"], EG["a1"], EG["e3"]),
-            (EG["e2"], EG["a2"], EG["e3"]),
-        ]
-        GraphHelper.add_triples(graph, triples)
-
-        query = """
-        PREFIX eg: <http://example.com/>
-        CONSTRUCT { ?subject ?predicate ?object } WHERE {
-            VALUES ?predicate { eg:a1 }
-            ?subject ?predicate ?object
-        } ORDER BY ?object
-        """
-        self.result = graph.query(query)
-
-        conjunctive_graph = ConjunctiveGraph()
-        conjunctive_graph.add((EG["e1"], EG["a1"], EG["e2"], EG["graph"]))
-        conjunctive_graph.add((EG["e1"], EG["a1"], EG["e3"], EG["graph"]))
-        self.graph = conjunctive_graph
-
-        self._tmpdir = TemporaryDirectory()
-        self.tmpdir = Path(self._tmpdir.name)
-
-        return super().setUp()
-
-    def tearDown(self) -> None:
-        self._tmpdir.cleanup()
-
-
 
 
 if __name__ == "__main__":
