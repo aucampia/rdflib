@@ -1,8 +1,11 @@
+from typing import IO, TYPE_CHECKING, Optional, TextIO, Union
 from rdflib import URIRef, BNode, Literal
 from rdflib.query import ResultSerializer
+from rdflib.namespace import NamespaceManager
+from rdflib.util import as_textio
 
 
-def _termString(t, namespace_manager):
+def _termString(t, namespace_manager: Optional[NamespaceManager]):
     if t is None:
         return "-"
     if namespace_manager:
@@ -21,7 +24,13 @@ class TXTResultSerializer(ResultSerializer):
     A write only QueryResult serializer for text/ascii tables
     """
 
-    def serialize(self, stream, encoding, namespace_manager=None):
+    # TODO FIXME: class specific args should be keyword only.
+    def serialize(  # type: ignore[override]
+        self,
+        stream: Union[IO[bytes], TextIO],
+        encoding: Optional[str],
+        namespace_manager: Optional[NamespaceManager] = None,
+    ):
         """
         return a text table of query results
         """
@@ -42,7 +51,8 @@ class TXTResultSerializer(ResultSerializer):
         if not self.result:
             return "(no results)\n"
         else:
-
+            if TYPE_CHECKING:
+                assert self.result.vars is not None
             keys = self.result.vars
             maxlen = [0] * len(keys)
             b = [
@@ -53,9 +63,13 @@ class TXTResultSerializer(ResultSerializer):
                 for i in range(len(keys)):
                     maxlen[i] = max(maxlen[i], len(r[i]))
 
-            stream.write("|".join([c(k, maxlen[i]) for i, k in enumerate(keys)]) + "\n")
-            stream.write("-" * (len(maxlen) + sum(maxlen)) + "\n")
-            for r in sorted(b):
+            with as_textio(stream) as stream:
                 stream.write(
-                    "|".join([t + " " * (i - len(t)) for i, t in zip(maxlen, r)]) + "\n"
+                    "|".join([c(k, maxlen[i]) for i, k in enumerate(keys)]) + "\n"
                 )
+                stream.write("-" * (len(maxlen) + sum(maxlen)) + "\n")
+                for r in sorted(b):
+                    stream.write(
+                        "|".join([t + " " * (i - len(t)) for i, t in zip(maxlen, r)])
+                        + "\n"
+                    )

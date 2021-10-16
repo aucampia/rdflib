@@ -1,4 +1,5 @@
 from __future__ import print_function
+from rdflib.plugin import Plugin
 
 import os
 import sys
@@ -9,6 +10,7 @@ import random
 
 from contextlib import AbstractContextManager, contextmanager
 from typing import (
+    Generic,
     Iterable,
     List,
     Optional,
@@ -33,10 +35,11 @@ from .earl import add_test, report
 import unittest
 
 from rdflib import BNode, Graph, ConjunctiveGraph
-from rdflib.term import Node
+from rdflib.term import Node, URIRef
 from unittest.mock import MagicMock, Mock
 from urllib.error import HTTPError
 from urllib.request import urlopen
+import rdflib.plugin
 
 if TYPE_CHECKING:
     import typing_extensions as te
@@ -46,6 +49,32 @@ if TYPE_CHECKING:
 # rdflib.graphutils.isomorphic and use instead.
 from test import TEST_DIR
 from test.earl import add_test, report
+
+PluginT = TypeVar("PluginT")
+
+
+class PluginWithNames(NamedTuple, Generic[PluginT]):
+    plugin: Plugin[PluginT]
+    names: Set[str]
+
+
+def get_unique_plugins(
+    type: Type[PluginT],
+) -> Dict[Type[PluginT], Set[Plugin[PluginT]]]:
+    result: Dict[Type[PluginT], Set[Plugin[PluginT]]] = {}
+    for plugin in rdflib.plugin.plugins(None, type):
+        cls = plugin.getClass()
+        plugins = result.setdefault(cls, set())
+        plugins.add(plugin)
+    return result
+
+
+def get_unique_plugin_names(type: Type[PluginT]) -> Set[str]:
+    result: Set[str] = set()
+    unique_plugins = get_unique_plugins(type)
+    for type, plugin_set in unique_plugins.items():
+        result.add(next(iter(plugin_set)).name)
+    return result
 
 
 def crapCompare(g1, g2):
@@ -174,6 +203,14 @@ def ctx_http_server(handler: Type[BaseHTTPRequestHandler]) -> Iterator[HTTPServe
 
 class GraphHelper:
     @classmethod
+    def add_triples(
+        cls, graph: Graph, triples: Iterable[Tuple[Node, Node, Node]]
+    ) -> Graph:
+        for triple in triples:
+            graph.add(triple)
+        return graph
+
+    @classmethod
     def triple_set(cls, graph: Graph) -> Set[Tuple[Node, Node, Node]]:
         return set(graph.triples((None, None, None)))
 
@@ -185,8 +222,32 @@ class GraphHelper:
         return result
 
     @classmethod
-    def equals(cls, lhs: Graph, rhs: Graph) -> bool:
-        return cls.triple_set(lhs) == cls.triple_set(rhs)
+    def quad_set(cls, graph: ConjunctiveGraph) -> Set[Tuple[Node, Node, Node, Node]]:
+        result: Set[Tuple[Node, Node, Node, Node]] = set()
+        for quad in graph.quads((None, None, None, None)):
+            c: Graph
+            s, p, o, c = quad
+            result.add((s, p, o, c.identifier))
+        return result
+
+    @classmethod
+    def quad_sets(
+        cls, graphs: Iterable[ConjunctiveGraph]
+    ) -> List[Set[Tuple[Node, Node, Node, Node]]]:
+        result: List[Set[Tuple[Node, Node, Node, Node]]] = []
+        for graph in graphs:
+            result.append(cls.quad_set(graph))
+        return result
+
+    # @classmethod
+    # def equals(cls, lhs: Graph, rhs: Graph) -> bool:
+    #     if hasattr(lhs, "quads"):
+    #         if not hasattr(rhs, "quads"):
+    #             return False
+    #         lhs = cast(ConjunctiveGraph, lhs)
+    #         rhs = cast(ConjunctiveGraph, rhs)
+    #         return cls.quad_set(lhs) == cls.quad_set(rhs)
+    #     return cls.triple_set(lhs) == cls.triple_set(rhs)
 
 
 GenericT = TypeVar("GenericT", bound=Any)

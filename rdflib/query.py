@@ -4,13 +4,19 @@ import shutil
 import tempfile
 import warnings
 import types
-from typing import Optional, Union, cast
+import pathlib
+import traceback
+from typing import IO, TYPE_CHECKING, List, Optional, TextIO, Union, cast, overload
 
-from io import BytesIO, BufferedIOBase
+from io import BytesIO
 
 from urllib.parse import urlparse
 
 __all__ = ["Processor", "Result", "ResultParser", "ResultSerializer", "ResultException"]
+
+if TYPE_CHECKING:
+    from .graph import Graph
+    from .term import Variable
 
 
 class Processor(object):
@@ -112,7 +118,6 @@ class ResultRow(tuple):
     """
 
     def __new__(cls, values, labels):
-
         instance = super(ResultRow, cls).__new__(cls, (values.get(v) for v in labels))
         instance.labels = dict((str(x[1]), x[0]) for x in enumerate(labels))
         return instance
@@ -161,17 +166,17 @@ class Result(object):
 
     """
 
-    def __init__(self, type_):
+    def __init__(self, type_: str):
 
         if type_ not in ("CONSTRUCT", "DESCRIBE", "SELECT", "ASK"):
             raise ResultException("Unknown Result type: %s" % type_)
 
         self.type = type_
-        self.vars = None
+        self.vars: Optional[List[Variable]] = None
         self._bindings = None
         self._genbindings = None
-        self.askAnswer = None
-        self.graph = None
+        self.askAnswer: bool = None  # type: ignore[assignment]
+        self.graph: "Graph" = None  # type: ignore[assignment]
 
     def _get_bindings(self):
         if self._genbindings:
@@ -192,7 +197,12 @@ class Result(object):
     )
 
     @staticmethod
-    def parse(source=None, format=None, content_type=None, **kwargs):
+    def parse(
+        source=None,
+        format: Optional[str] = None,
+        content_type: Optional[str] = None,
+        **kwargs,
+    ):
         from rdflib import plugin
 
         if format:
@@ -206,54 +216,175 @@ class Result(object):
 
         return parser.parse(source, content_type=content_type, **kwargs)
 
+    # None destination and non-None positional encoding
+    @overload
     def serialize(
         self,
-        destination: Optional[Union[str, BufferedIOBase]] = None,
-        encoding: str = "utf-8",
-        format: str = "xml",
+        destination: None,
+        encoding: str,
+        format: Optional[str] = ...,
         **args,
-    ) -> Optional[bytes]:
+    ) -> bytes:
+        ...
+
+    # None destination and non-None keyword encoding
+    @overload
+    def serialize(
+        self,
+        *,
+        destination: None = ...,
+        encoding: str,
+        format: Optional[str] = ...,
+        **args,
+    ) -> bytes:
+        ...
+
+    # None destination and None positional encoding
+    @overload
+    def serialize(
+        self,
+        destination: None,
+        encoding: None = None,
+        format: Optional[str] = ...,
+        **args,
+    ) -> str:
+        ...
+
+    # None destination and None keyword encoding
+    @overload
+    def serialize(
+        self,
+        *,
+        destination: None = ...,
+        encoding: None = None,
+        format: Optional[str] = ...,
+        **args,
+    ) -> str:
+        ...
+
+    # non-none binary destination
+    @overload
+    def serialize(
+        self,
+        destination: Union[str, pathlib.PurePath, IO[bytes]],
+        encoding: Optional[str] = ...,
+        format: Optional[str] = ...,
+        **args,
+    ) -> None:
+        ...
+
+    # non-none text destination
+    @overload
+    def serialize(
+        self,
+        destination: Union[TextIO],
+        encoding: None = ...,
+        format: Optional[str] = ...,
+        **args,
+    ) -> None:
+        ...
+
+    # fallback
+    @overload
+    def serialize(
+        self,
+        destination: Optional[Union[str, pathlib.PurePath, IO[bytes], TextIO]] = ...,
+        encoding: Optional[str] = ...,
+        format: Optional[str] = ...,
+        **args,
+    ) -> Union[bytes, str, None]:
+        ...
+
+    # NOTE: Using TextIO as opposed to IO[str] because I want to be able to use buffer.
+    def serialize(
+        self,
+        destination: Optional[Union[str, pathlib.PurePath, IO[bytes], TextIO]] = None,
+        encoding: Optional[str] = None,
+        format: Optional[str] = None,
+        **args,
+    ) -> Union[bytes, str, None]:
         """
         Serialize the query result.
 
-        The :code:`format` argument determines the Serializer class to use.
-
-        - csv: :class:`~rdflib.plugins.sparql.results.csvresults.CSVResultSerializer`
-        - json: :class:`~rdflib.plugins.sparql.results.jsonresults.JSONResultSerializer`
-        - txt: :class:`~rdflib.plugins.sparql.results.txtresults.TXTResultSerializer`
-        - xml: :class:`~rdflib.plugins.sparql.results.xmlresults.XMLResultSerializer`
-
-        :param destination: Path of file output or BufferedIOBase object to write the output to.
+        :param destination:
+           The destination to serialize the result to. This can be a path as a
+           :class:`str` or :class:`~pathlib.PurePath` object, or it can be a
+           :class:`~typing.IO[bytes]` like object. If this parameter is not
+           supplied the serialized result will be returned.
+        :type destination: Optional[Union[str, typing.IO[bytes], pathlib.PurePath]]
         :param encoding: Encoding of output.
-        :param format: One of ['csv', 'json', 'txt', xml']
-        :param args:
-        :return: bytes
+        :type encoding: Optional[str]
+        :param format:
+           The format that the output should be written in.
+
+           For tabular results, the value refers to a
+           :class:`rdflib.query.ResultSerializer` plugin.Support for the
+           following tabular formats are built in:
+
+            - `"csv"`: :class:`~rdflib.plugins.sparql.results.csvresults.CSVResultSerializer`
+            - `"json"`: :class:`~rdflib.plugins.sparql.results.jsonresults.JSONResultSerializer`
+            - `"txt"`: :class:`~rdflib.plugins.sparql.results.txtresults.TXTResultSerializer`
+            - `"xml"`: :class:`~rdflib.plugins.sparql.results.xmlresults.XMLResultSerializer`
+
+           For tabular results, the default format is `"csv"`.
+
+           For graph results, the value refers to a
+           :class:`~rdflib.serializer.Serializer` plugin and is passed to
+           :func:`~rdflib.graph.Graph.serialize`.
+        :type format: str
         """
         if self.type in ("CONSTRUCT", "DESCRIBE"):
-            return self.graph.serialize(
-                destination, encoding=encoding, format=format, **args
+            if format is None:
+                format = "turtle"
+            if (
+                destination is not None
+                and hasattr(destination, "encoding")
+                and hasattr(destination, "buffer")
+            ):
+                destination = cast(TextIO, destination).buffer
+            destination = cast(
+                Optional[Union[str, pathlib.PurePath, IO[bytes]]], destination
             )
+            result = self.graph.serialize(
+                destination=destination, format=format, encoding=encoding, **args
+            )
+            from rdflib.graph import Graph
+            if isinstance(result, Graph):
+                return None
+            return result
 
         """stolen wholesale from graph.serialize"""
         from rdflib import plugin
 
+        if format is None:
+            format = "txt"
         serializer = plugin.get(format, ResultSerializer)(self)
+        stream: IO[bytes]
         if destination is None:
-            streamb: BytesIO = BytesIO()
-            stream2 = EncodeOnlyUnicode(streamb)
-            serializer.serialize(stream2, encoding=encoding, **args)
-            return streamb.getvalue()
+            stream = BytesIO()
+            if encoding is None:
+                serializer.serialize(stream, encoding="utf-8", **args)
+                return stream.getvalue().decode("utf-8")
+            else:
+                serializer.serialize(stream, encoding=encoding, **args)
+                return stream.getvalue()
+            # streamb: BytesIO = BytesIO()
+            # stream2 = EncodeOnlyUnicode(streamb)
+            # serializer.serialize(stream2, encoding=encoding, **args)
+            # return streamb.getvalue()
         if hasattr(destination, "write"):
-            stream = cast(BufferedIOBase, destination)
+            stream = cast(IO[bytes], destination)
             serializer.serialize(stream, encoding=encoding, **args)
         else:
-            location = cast(str, destination)
+            if isinstance(destination, pathlib.PurePath):
+                location = str(destination)
+            else:
+                location = cast(str, destination)
             scheme, netloc, path, params, query, fragment = urlparse(location)
             if netloc != "":
-                print(
-                    "WARNING: not saving as location" + "is not a local file reference"
+                raise ValueError(
+                    f"destination {destination} is not a local file reference"
                 )
-                return None
             fd, name = tempfile.mkstemp()
             stream = os.fdopen(fd, "wb")
             serializer.serialize(stream, encoding=encoding, **args)
@@ -339,9 +470,22 @@ class ResultParser(object):
 
 
 class ResultSerializer(object):
-    def __init__(self, result):
+    def __init__(self, result: Result):
         self.result = result
 
-    def serialize(self, stream, encoding="utf-8", **kwargs):
+    @overload
+    def serialize(self, stream: IO[bytes], encoding: Optional[str] = ..., **kwargs):
+        ...
+
+    @overload
+    def serialize(self, stream: TextIO, encoding: None = ..., **kwargs):
+        ...
+
+    def serialize(
+        self,
+        stream: Union[IO[bytes], TextIO],
+        encoding: Optional[str] = None,
+        **kwargs,
+    ):
         """return a string properly serialized"""
         pass  # abstract
