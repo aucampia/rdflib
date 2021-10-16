@@ -12,7 +12,6 @@ from typing import (
     Union,
     cast,
 )
-from rdflib.graph import ConjunctiveGraph, test
 from rdflib.query import Result, ResultRow
 from .test_serialize import DestinationFactory, DestinationType
 from test.testutils import GraphHelper
@@ -21,10 +20,7 @@ import unittest
 from rdflib import Graph, Namespace
 from tempfile import TemporaryDirectory
 from pathlib import Path, PurePath
-from io import BytesIO, IOBase, StringIO, TextIOBase
-import json
-import io
-import csv
+from io import BytesIO, IOBase, StringIO
 import inspect
 
 EG = Namespace("http://example.com/")
