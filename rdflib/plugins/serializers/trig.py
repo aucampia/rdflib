@@ -4,7 +4,7 @@ See <http://www.w3.org/TR/trig/> for syntax specification.
 """
 
 from collections import defaultdict
-from typing import IO, TYPE_CHECKING, Optional, Union, cast
+from typing import IO, Optional, Union, cast
 
 from rdflib.graph import ConjunctiveGraph, Graph
 from rdflib.plugins.serializers.turtle import TurtleSerializer
@@ -62,43 +62,44 @@ class TrigSerializer(TurtleSerializer):
         **args
     ):
         self._serialize_init(stream, encoding)
+        try:
+            self.preprocess()
 
-        self.preprocess()
+            self.startDocument()
 
-        self.startDocument()
-
-        firstTime = True
-        for store, (ordered_subjects, subjects, ref) in self._contexts.items():
-            if not ordered_subjects:
-                continue
-
-            self._references = ref
-            self._serialized = {}
-            self.store = store
-            self._subjects = subjects
-
-            if self.default_context and store.identifier == self.default_context:
-                self.write(self.indent() + "\n{")
-            else:
-                if isinstance(store.identifier, BNode):
-                    iri = store.identifier.n3()
-                else:
-                    iri = self.getQName(store.identifier)
-                    if iri is None:
-                        iri = store.identifier.n3()
-                self.write(self.indent() + "\n%s {" % iri)
-
-            self.depth += 1
-            for subject in ordered_subjects:
-                if self.isDone(subject):
+            firstTime = True
+            for store, (ordered_subjects, subjects, ref) in self._contexts.items():
+                if not ordered_subjects:
                     continue
-                if firstTime:
-                    firstTime = False
-                if self.statement(subject) and not firstTime:
-                    self.write("\n")
-            self.depth -= 1
-            self.write("}\n")
 
-        self.endDocument()
-        self.write("\n")
-        self._serialize_end()
+                self._references = ref
+                self._serialized = {}
+                self.store = store
+                self._subjects = subjects
+
+                if self.default_context and store.identifier == self.default_context:
+                    self.write(self.indent() + "\n{")
+                else:
+                    if isinstance(store.identifier, BNode):
+                        iri = store.identifier.n3()
+                    else:
+                        iri = self.getQName(store.identifier)
+                        if iri is None:
+                            iri = store.identifier.n3()
+                    self.write(self.indent() + "\n%s {" % iri)
+
+                self.depth += 1
+                for subject in ordered_subjects:
+                    if self.isDone(subject):
+                        continue
+                    if firstTime:
+                        firstTime = False
+                    if self.statement(subject) and not firstTime:
+                        self.write("\n")
+                self.depth -= 1
+                self.write("}\n")
+
+            self.endDocument()
+            self.write("\n")
+        finally:
+            self._serialize_end()

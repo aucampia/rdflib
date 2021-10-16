@@ -411,8 +411,9 @@ class TestIO(unittest.TestCase):
         with tmp_file.open("w") as text_stream:
             text_io: TextIO = text_stream
             assert text_io is text_stream
-            assert as_textio(text_stream) is text_stream
-            as_textio(text_stream).write("Test")
+            with as_textio(text_stream) as text_io:
+                assert text_io is text_stream
+                text_io.write("Test")
             text_stream.flush()
             self.assertEqual(tmp_file.read_text(), "Test")
             self.assertIsInstance(text_io, TextIOBase)
@@ -422,7 +423,8 @@ class TestIO(unittest.TestCase):
         with tmp_file.open("wb") as buffered_stream:
             binary_io: BinaryIO = buffered_stream
             assert binary_io is buffered_stream
-            as_textio(buffered_stream).write("Test")
+            with as_textio(buffered_stream) as text_io:
+                text_io.write("Test")
             self.assertEqual(tmp_file.read_text(), "Test")
             self.assertIsInstance(buffered_stream, BufferedIOBase)
 
@@ -431,7 +433,8 @@ class TestIO(unittest.TestCase):
         with tmp_file.open("wb", buffering=0) as raw_stream:
             binary_io: BinaryIO = raw_stream
             assert binary_io is raw_stream
-            as_textio(raw_stream).write("Test")
+            with as_textio(raw_stream) as text_io:
+                text_io.write("Test")
             self.assertEqual(tmp_file.read_text(), "Test")
             self.assertIsInstance(binary_io, RawIOBase)
 

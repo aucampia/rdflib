@@ -1117,8 +1117,8 @@ class Graph(Node):
            The format that the output should be written in. This value
            references a :class:`~rdflib.serializer.Serializer` plugin. Format
            support can be extended with plugins, but `"xml"`, `"n3"`,
-           `"turtle"`, `"nt"`, `"pretty-xml"`, `"trix"`, `"trig"` and `"nquads"`
-           are built in. Defaults to `"turtle"`.
+           `"turtle"`, `"nt"`, `"pretty-xml"`, `"trix"`, `"trig"`, `"nquads"`
+           and `"json-ld"` are built in. Defaults to `"turtle"`.
         :type format: str
         :param base:
            The base IRI for formats that support it. For the turtle format this

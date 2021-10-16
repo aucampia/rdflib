@@ -65,7 +65,8 @@ def roundtrip(e, verbose=False):
     g2 = rdflib.ConjunctiveGraph()
     g2.parse(data=s, format=testfmt)
 
-    if verbose:
+    if not rdflib.compare.isomorphic(g1, g2):
+        print(f"testfmt={testfmt}")
         both, first, second = rdflib.compare.graph_diff(g1, g2)
         print("Diff:")
         print("%d triples in both" % len(both))

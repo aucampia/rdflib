@@ -5,7 +5,7 @@ from rdflib.namespace import Namespace, RDF, RDFS  # , split_uri
 from rdflib.plugins.parsers.RDFVOC import RDFVOC
 
 from rdflib.graph import Graph
-from rdflib.term import Identifier, Node, URIRef, Literal, BNode
+from rdflib.term import Identifier, URIRef, Literal, BNode
 from rdflib.util import first, more_than
 from rdflib.collection import Collection
 from rdflib.serializer import Serializer

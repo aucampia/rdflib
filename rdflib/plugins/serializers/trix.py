@@ -1,5 +1,3 @@
-import os
-import sys
 from typing import IO, Optional
 from rdflib.serializer import Serializer
 from rdflib.plugins.serializers.xmlwriter import XMLWriter

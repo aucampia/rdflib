@@ -1,4 +1,4 @@
-from typing import IO, TYPE_CHECKING, Optional
+from typing import IO, Optional
 import warnings
 
 from rdflib.graph import ConjunctiveGraph, Graph
@@ -6,7 +6,6 @@ from rdflib.term import Literal
 from rdflib.serializer import Serializer
 
 from rdflib.plugins.serializers.nt import _quoteLiteral
-
 
 __all__ = ["NQuadsSerializer"]
 
@@ -17,6 +16,7 @@ class NQuadsSerializer(Serializer):
             raise Exception(
                 "NQuads serialization only makes " "sense for context-aware stores!"
             )
+
         super(NQuadsSerializer, self).__init__(store)
         self.store: ConjunctiveGraph
 

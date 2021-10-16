@@ -2,7 +2,7 @@ from io import BytesIO
 import pickle
 from typing_extensions import TYPE_CHECKING
 from rdflib.events import Dispatcher, Event
-from typing import Tuple, Iterable, Any, Optional
+from typing import Tuple, Iterable, Optional
 
 if TYPE_CHECKING:
     from .term import Node

@@ -35,7 +35,7 @@ from .earl import add_test, report
 import unittest
 
 from rdflib import BNode, Graph, ConjunctiveGraph
-from rdflib.term import Node, URIRef
+from rdflib.term import Node
 from unittest.mock import MagicMock, Mock
 from urllib.error import HTTPError
 from urllib.request import urlopen

@@ -9,8 +9,7 @@ http://www.w3.org/TR/sparql11-results-csv-tsv/
 
 import codecs
 import csv
-from io import BufferedIOBase, RawIOBase
-from typing import IO, TYPE_CHECKING, Optional, TextIO, Union, cast
+from typing import IO, TYPE_CHECKING, Optional, TextIO, Union
 
 from rdflib import Variable, BNode, URIRef, Literal
 

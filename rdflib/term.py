@@ -64,7 +64,7 @@ from urllib.parse import urljoin
 from urllib.parse import urlparse
 
 from decimal import Decimal
-from typing import TYPE_CHECKING, AnyStr, Dict, Callable, Optional, Union, Type
+from typing import TYPE_CHECKING, Dict, Callable, Optional, Union, Type
 
 if TYPE_CHECKING:
     from .paths import AlternativePath, InvPath, NegatedPath, SequencePath, Path

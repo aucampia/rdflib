@@ -150,7 +150,6 @@ class FormatInfos(Dict[str, FormatInfo]):
 
         quad_only_formats = {
             "nquads",
-            "trig",
             "trix",
             "json-ld",
         }

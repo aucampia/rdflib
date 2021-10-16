@@ -11,7 +11,8 @@ from rdflib.serializer import Serializer
 
 import warnings
 import codecs
-from io import TextIOWrapper
+
+from rdflib.util import as_textio
 
 __all__ = ["NTSerializer"]
 
@@ -38,14 +39,15 @@ class NTSerializer(Serializer):
             warnings.warn("NTSerializer does not use custom encoding.")
         encoding = self.encoding
 
-        text_stream = TextIOWrapper(
-            stream, self.encoding, errors="replace", write_through=True
-        )
-
-        for triple in self.store:
-            text_stream.write(_nt_row(triple))
-        text_stream.write("\n")
-        text_stream.detach()
+        with as_textio(
+            stream,
+            encoding=self.encoding,
+            errors="_rdflib_nt_escape",
+            write_through=True,
+        ) as text_stream:
+            for triple in self.store:
+                text_stream.write(_nt_row(triple))
+            text_stream.write("\n")
 
 
 class NT11Serializer(NTSerializer):

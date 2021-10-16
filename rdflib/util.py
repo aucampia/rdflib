@@ -43,8 +43,6 @@ from os.path import splitext
 from typing import (
     IO,
     Generator,
-    Iterable,
-    Iterator,
     Optional,
     TextIO,
     Union,
@@ -509,16 +507,21 @@ def get_tree(
 def as_textio(
     anyio: Union[IO[bytes], TextIO],
     encoding: Optional[str] = None,
+    errors: Union[str, None] = None,
+    write_through: bool = False,
 ) -> Generator[TextIO, None, None]:
     if hasattr(anyio, "encoding"):
         yield cast(TextIO, anyio)
     else:
-        textio_wrapper = TextIOWrapper(cast(IO[bytes], anyio), encoding=encoding)
+        textio_wrapper = TextIOWrapper(
+            cast(IO[bytes], anyio),
+            encoding=encoding,
+            errors=errors,
+            write_through=write_through,
+        )
         yield textio_wrapper
         textio_wrapper.flush()
         textio_wrapper.detach()
-
-
 
 
 def test():

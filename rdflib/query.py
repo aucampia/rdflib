@@ -5,7 +5,6 @@ import tempfile
 import warnings
 import types
 import pathlib
-import traceback
 from typing import IO, TYPE_CHECKING, List, Optional, TextIO, Union, cast, overload
 
 from io import BytesIO
@@ -118,6 +117,7 @@ class ResultRow(tuple):
     """
 
     def __new__(cls, values, labels):
+
         instance = super(ResultRow, cls).__new__(cls, (values.get(v) for v in labels))
         instance.labels = dict((str(x[1]), x[0]) for x in enumerate(labels))
         return instance
@@ -309,7 +309,7 @@ class Result(object):
         :param destination:
            The destination to serialize the result to. This can be a path as a
            :class:`str` or :class:`~pathlib.PurePath` object, or it can be a
-           :class:`~typing.IO[bytes]` like object. If this parameter is not
+           :class:`~typing.IO[bytes]` or :class:`~typing.TextIO` like object. If this parameter is not
            supplied the serialized result will be returned.
         :type destination: Optional[Union[str, typing.IO[bytes], pathlib.PurePath]]
         :param encoding: Encoding of output.
@@ -326,11 +326,14 @@ class Result(object):
             - `"txt"`: :class:`~rdflib.plugins.sparql.results.txtresults.TXTResultSerializer`
             - `"xml"`: :class:`~rdflib.plugins.sparql.results.xmlresults.XMLResultSerializer`
 
-           For tabular results, the default format is `"csv"`.
+           For tabular results, the default format is `"txt"`.
 
            For graph results, the value refers to a
            :class:`~rdflib.serializer.Serializer` plugin and is passed to
-           :func:`~rdflib.graph.Graph.serialize`.
+           :func:`~rdflib.graph.Graph.serialize`. Graph format support can be
+           extended with plugins, but `"xml"`, `"n3"`, `"turtle"`, `"nt"`,
+           `"pretty-xml"`, `"trix"`, `"trig"`, `"nquads"` and `"json-ld"` are
+           built in. Defaults to `"turtle"`.
         :type format: str
         """
         if self.type in ("CONSTRUCT", "DESCRIBE"):
@@ -341,6 +344,7 @@ class Result(object):
                 and hasattr(destination, "encoding")
                 and hasattr(destination, "buffer")
             ):
+                # rudimentary check for TextIO-like objects.
                 destination = cast(TextIO, destination).buffer
             destination = cast(
                 Optional[Union[str, pathlib.PurePath, IO[bytes]]], destination
@@ -349,6 +353,7 @@ class Result(object):
                 destination=destination, format=format, encoding=encoding, **args
             )
             from rdflib.graph import Graph
+
             if isinstance(result, Graph):
                 return None
             return result
@@ -368,10 +373,6 @@ class Result(object):
             else:
                 serializer.serialize(stream, encoding=encoding, **args)
                 return stream.getvalue()
-            # streamb: BytesIO = BytesIO()
-            # stream2 = EncodeOnlyUnicode(streamb)
-            # serializer.serialize(stream2, encoding=encoding, **args)
-            # return streamb.getvalue()
         if hasattr(destination, "write"):
             stream = cast(IO[bytes], destination)
             serializer.serialize(stream, encoding=encoding, **args)

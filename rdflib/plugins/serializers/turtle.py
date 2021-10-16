@@ -11,8 +11,8 @@ from rdflib.term import BNode, Literal, URIRef
 from rdflib.exceptions import Error
 from rdflib.serializer import Serializer
 from rdflib.namespace import RDF, RDFS
-from io import BufferedIOBase, RawIOBase, TextIOBase, TextIOWrapper
-from typing import IO, TYPE_CHECKING, Dict, Optional
+from io import TextIOWrapper
+from typing import IO, Dict, Optional
 
 __all__ = ["RecursiveSerializer", "TurtleSerializer"]
 
@@ -264,24 +264,25 @@ class TurtleSerializer(RecursiveSerializer):
         **args
     ):
         self._serialize_init(stream, base, encoding, spacious)
+        try:
+            self.preprocess()
+            subjects_list = self.orderSubjects()
 
-        self.preprocess()
-        subjects_list = self.orderSubjects()
+            self.startDocument()
 
-        self.startDocument()
+            firstTime = True
+            for subject in subjects_list:
+                if self.isDone(subject):
+                    continue
+                if firstTime:
+                    firstTime = False
+                if self.statement(subject) and not firstTime:
+                    self.write("\n")
 
-        firstTime = True
-        for subject in subjects_list:
-            if self.isDone(subject):
-                continue
-            if firstTime:
-                firstTime = False
-            if self.statement(subject) and not firstTime:
-                self.write("\n")
-
-        self.endDocument()
-        self.stream.write("\n")
-        self._serialize_end()
+            self.endDocument()
+            self.stream.write("\n")
+        finally:
+            self._serialize_end()
 
     def preprocessTriple(self, triple):
         super(TurtleSerializer, self).preprocessTriple(triple)
