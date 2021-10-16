@@ -385,7 +385,10 @@ class TestSerialize(unittest.TestCase):
                 def dest() -> Union[str, Path, PurePath, IO[bytes]]:
                     nonlocal dest_path
                     nonlocal _dest
-                    _dest, dest_path = dest_factory.make(dest_type, stack)
+                    _dest, dest_path = cast(
+                        Tuple[Union[str, Path, PurePath, IO[bytes]], Path],
+                        dest_factory.make(dest_type, stack),
+                    )
                     return _dest
 
                 def _check(check_context: bool = True) -> None:
@@ -395,7 +398,7 @@ class TestSerialize(unittest.TestCase):
                         dest_type=dest_type,
                         caller=inspect.stack()[2],
                     ):
-                        if isinstance(_dest, IOBase):
+                        if isinstance(_dest, IOBase):  # type: ignore[unreachable]
                             _dest.flush()
 
                         source = Path(dest_path)

@@ -88,6 +88,8 @@ def check_txt(test_case: unittest.TestCase, result: Result, data: str) -> None:
     test_case.assertEqual(len(txt_lines) - 2, len(result))
     test_case.assertRegex(txt_lines[1], r"^[-]+$")
     header = txt_lines[0]
+    test_case.assertIsNotNone(result.vars)
+    assert result.vars is not None
     for var in result.vars:
         test_case.assertIn(var, header)
     for row_index, row in enumerate(result):
@@ -223,7 +225,7 @@ class TestSerializeSelect(unittest.TestCase):
                         dest_type=dest_type,
                         caller=inspect.stack()[1],
                     ):
-                        if isinstance(_dest, IOBase):
+                        if isinstance(_dest, IOBase):  # type: ignore[unreachable]
                             _dest.flush()
                         format_info = format_infos[format]
                         data_str = dest_path.read_text(encoding=encoding)
