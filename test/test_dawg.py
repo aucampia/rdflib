@@ -515,18 +515,19 @@ testers = {
 
 def test_dawg():
 
-    setFlags()
+    try:
+        setFlags()
 
-    if SPARQL10Tests:
-        return [t for t in nose_tests(testers, "test/DAWG/data-r2/manifest-evaluation.ttl")]
+        if SPARQL10Tests:
+            return [t for t in nose_tests(testers, "test/DAWG/data-r2/manifest-evaluation.ttl")]
 
-    if SPARQL11Tests:
-        return [t for t in nose_tests(testers, "test/DAWG/data-sparql11/manifest-all.ttl")]
+        if SPARQL11Tests:
+            return [t for t in nose_tests(testers, "test/DAWG/data-sparql11/manifest-all.ttl")]
 
-    if RDFLibTests:
-        return [t for t in nose_tests(testers, "test/DAWG/rdflib/manifest.ttl")]
-
-    resetFlags()
+        if RDFLibTests:
+            return [t for t in nose_tests(testers, "test/DAWG/rdflib/manifest.ttl")]
+    finally:
+        resetFlags()
 
 
 if __name__ == "__main__":
