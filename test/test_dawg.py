@@ -8,7 +8,8 @@ import sys
 #           syntax-update-2/manifest#syntax-update-other-01
 from test import TEST_DIR
 from test.earl import report, add_test
-from test.manifest import nose_tests, UP, MF
+from test.manifest import nose_tests, UP, MF, run_test_manifest
+from pytest_subtests import SubTests
 
 sys.setrecursionlimit(6000)  # default is 1000
 
@@ -513,19 +514,19 @@ testers = {
 }
 
 
-def test_dawg():
+def test_dawg(subtests: SubTests):
 
     try:
         setFlags()
 
         if SPARQL10Tests:
-            return [t for t in nose_tests(testers, "test/DAWG/data-r2/manifest-evaluation.ttl")]
+            run_test_manifest(subtests, testers, "test/DAWG/data-r2/manifest-evaluation.ttl")
 
         if SPARQL11Tests:
-            return [t for t in nose_tests(testers, "test/DAWG/data-sparql11/manifest-all.ttl")]
+            run_test_manifest(subtests, testers, "test/DAWG/data-sparql11/manifest-all.ttl")
 
         if RDFLibTests:
-            return [t for t in nose_tests(testers, "test/DAWG/rdflib/manifest.ttl")]
+            run_test_manifest(subtests, testers, "test/DAWG/rdflib/manifest.ttl")
     finally:
         resetFlags()
 

@@ -1,5 +1,7 @@
 from collections import namedtuple
 from nose.tools import nottest
+import pytest
+from pytest_subtests import SubTests
 
 from rdflib import Graph, RDF, RDFS, Namespace
 
@@ -154,3 +156,10 @@ def nose_tests(testers, manifest, base=None, legacy=False):
     for _type, test in read_manifest(manifest, base, legacy):
         if _type in testers:
             yield testers[_type], test
+
+
+def run_test_manifest(subtests: SubTests, testers, manifest, base=None, legacy=False):
+    for _type, test in read_manifest(manifest, base, legacy):
+        if _type in testers:
+            with subtests.test(_type=_type, test=test):
+                testers[_type](test)
