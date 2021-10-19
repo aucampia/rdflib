@@ -209,9 +209,8 @@ def get_test_suite_cases():
         yield func, TC_BASE, cat, num, inputpath, expectedpath, context, options
 
 
-
 @pytest.fixture(scope="module", autouse=True)
-def testsuide_dir():
+def global_state():
     old_cwd = getcwd()
     chdir(test_dir)
     yield

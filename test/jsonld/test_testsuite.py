@@ -77,13 +77,9 @@ def read_manifest(skiptests):
 
 
 def get_test_suite_cases(skip_known_bugs=True):
-    default_allow = rdflib.plugins.parsers.jsonld.ALLOW_LISTS_OF_LISTS
-    rdflib.plugins.parsers.jsonld.ALLOW_LISTS_OF_LISTS = allow_lists_of_lists
     skiptests = unsupported_tests
     if skip_known_bugs:
         skiptests += known_bugs
-
-    runner.DEFAULT_PARSER_VERSION = 1.0
     for cat, num, inputpath, expectedpath, context, options in read_manifest(
         skiptests
     ):
@@ -99,10 +95,16 @@ def get_test_suite_cases(skip_known_bugs=True):
 
 
 @pytest.fixture(scope="module", autouse=True)
-def testsuide_dir():
+def global_state():
+    old_version = runner.DEFAULT_PARSER_VERSION
+    runner.DEFAULT_PARSER_VERSION = 1.0
+    default_allow = rdflib.plugins.parsers.jsonld.ALLOW_LISTS_OF_LISTS
+    rdflib.plugins.parsers.jsonld.ALLOW_LISTS_OF_LISTS = allow_lists_of_lists
     old_cwd = getcwd()
     chdir(test_dir)
     yield
+    rdflib.plugins.parsers.jsonld.ALLOW_LISTS_OF_LISTS = default_allow
+    runner.DEFAULT_PARSER_VERSION = old_version
     chdir(old_cwd)
 
 
