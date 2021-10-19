@@ -494,8 +494,6 @@ def query_test(t):
             import pdb
 
             pdb.post_mortem(sys.exc_info()[2])
-            # pdb.set_trace()
-            # nose.tools.set_trace()
         raise
 
 

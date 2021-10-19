@@ -60,9 +60,3 @@ def test_graph_ids():
     source = StringInputSource(DATA.encode("utf8"))
     source.setPublicId(PUBLIC_ID)
     check(dict(source=source, format="turtle"))
-
-
-if __name__ == "__main__":
-    import nose
-
-    nose.main(defaultTest=__name__)

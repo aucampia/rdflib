@@ -459,3 +459,10 @@ class ServedSimpleHTTPMockTests(unittest.TestCase):
             httpmock.do_get_responses.append(
                 MockHTTPResponse(200, "OK", b"here it is", {})
             )
+
+
+def eq_(lhs, rhs, msg=None):
+    if msg:
+        assert lhs == rhs, msg
+    else:
+        assert lhs == rhs

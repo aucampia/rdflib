@@ -6,7 +6,6 @@ from rdflib import Graph
 from test import TEST_DIR
 from test.manifest import RDFT, read_manifest
 
-from test.testutils import nose_tst_earl_report
 import pytest
 
 verbose = False
