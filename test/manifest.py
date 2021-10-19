@@ -1,6 +1,4 @@
 from collections import namedtuple
-from nose.tools import nottest
-import pytest
 from pytest_subtests import SubTests
 
 from rdflib import Graph, RDF, RDFS, Namespace
