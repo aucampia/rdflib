@@ -1,5 +1,7 @@
 from os import environ, chdir, getcwd, path as p
 import json
+
+import pytest
 from . import runner
 
 
@@ -181,31 +183,44 @@ def read_manifest(skiptests):
                     yield category, testnum, inputpath, expectedpath, context, options
 
 
-def test_suite():
+def get_test_suite_cases():
     skiptests = unsupported_tests
     if SKIP_KNOWN_BUGS:
         skiptests += known_bugs
+
+    for cat, num, inputpath, expectedpath, context, options in read_manifest(
+        skiptests
+    ):
+        if options:
+            if (
+                SKIP_1_0_TESTS
+                and "specVersion" in options
+                and str(options["specVersion"]).lower() == "json-ld-1.0"
+            ):
+                # Skip the JSON v1.0 tests
+                continue
+        if inputpath.endswith(".jsonld"):  # toRdf
+            if expectedpath.endswith(".jsonld"):  # compact/expand/flatten
+                func = runner.do_test_json
+            else:  # toRdf
+                func = runner.do_test_parser
+        else:  # fromRdf
+            func = runner.do_test_serializer
+        yield func, TC_BASE, cat, num, inputpath, expectedpath, context, options
+
+
+
+@pytest.fixture(scope="module", autouse=True)
+def testsuide_dir():
     old_cwd = getcwd()
     chdir(test_dir)
-    try:
-        for cat, num, inputpath, expectedpath, context, options in read_manifest(
-            skiptests
-        ):
-            if options:
-                if (
-                    SKIP_1_0_TESTS
-                    and "specVersion" in options
-                    and str(options["specVersion"]).lower() == "json-ld-1.0"
-                ):
-                    # Skip the JSON v1.0 tests
-                    continue
-            if inputpath.endswith(".jsonld"):  # toRdf
-                if expectedpath.endswith(".jsonld"):  # compact/expand/flatten
-                    func = runner.do_test_json
-                else:  # toRdf
-                    func = runner.do_test_parser
-            else:  # fromRdf
-                func = runner.do_test_serializer
-            yield func, TC_BASE, cat, num, inputpath, expectedpath, context, options
-    finally:
-        chdir(old_cwd)
+    yield
+    chdir(old_cwd)
+
+
+@pytest.mark.parametrize(
+    "func, suite_base, cat, num, inputpath, expectedpath, context, options",
+    get_test_suite_cases(),
+)
+def test_suite(func, suite_base, cat, num, inputpath, expectedpath, context, options):
+    func(suite_base, cat, num, inputpath, expectedpath, context, options)

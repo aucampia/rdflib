@@ -1,6 +1,8 @@
 import os
 from os import environ, chdir, getcwd, path as p
 import json
+
+import pytest
 from . import runner
 
 
@@ -24,18 +26,29 @@ def read_manifest():
         yield category, name, inputpath, expectedpath, context, options
 
 
-def test_suite():
+def get_test_suite_cases():
+    for cat, num, inputpath, expectedpath, context, options in read_manifest():
+        if inputpath.endswith(".jsonld"):  # toRdf
+            if expectedpath.endswith(".jsonld"):  # compact/expand/flatten
+                func = runner.do_test_json
+            else:  # toRdf
+                func = runner.do_test_parser
+        else:  # fromRdf
+            func = runner.do_test_serializer
+        yield func, TC_BASE, cat, num, inputpath, expectedpath, context, options
+
+
+@pytest.fixture(scope="module", autouse=True)
+def testsuide_dir():
     old_cwd = getcwd()
     chdir(testsuite_dir)
-    try:
-        for cat, num, inputpath, expectedpath, context, options in read_manifest():
-            if inputpath.endswith(".jsonld"):  # toRdf
-                if expectedpath.endswith(".jsonld"):  # compact/expand/flatten
-                    func = runner.do_test_json
-                else:  # toRdf
-                    func = runner.do_test_parser
-            else:  # fromRdf
-                func = runner.do_test_serializer
-            yield func, TC_BASE, cat, num, inputpath, expectedpath, context, options
-    finally:
-        chdir(old_cwd)
+    yield
+    chdir(old_cwd)
+
+
+@pytest.mark.parametrize(
+    "func, suite_base, cat, num, inputpath, expectedpath, context, options",
+    get_test_suite_cases(),
+)
+def test_suite(func, suite_base, cat, num, inputpath, expectedpath, context, options):
+    func(suite_base, cat, num, inputpath, expectedpath, context, options)

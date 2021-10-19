@@ -1,5 +1,7 @@
 from os import environ, chdir, getcwd, path as p
 import json
+
+import pytest
 import rdflib
 import rdflib.plugins.parsers.jsonld as parser
 from . import runner
@@ -74,31 +76,42 @@ def read_manifest(skiptests):
                     yield category, testnum, inputpath, expectedpath, context, options
 
 
-def test_suite(skip_known_bugs=True):
+def get_test_suite_cases(skip_known_bugs=True):
     default_allow = rdflib.plugins.parsers.jsonld.ALLOW_LISTS_OF_LISTS
     rdflib.plugins.parsers.jsonld.ALLOW_LISTS_OF_LISTS = allow_lists_of_lists
     skiptests = unsupported_tests
     if skip_known_bugs:
         skiptests += known_bugs
+
+    runner.DEFAULT_PARSER_VERSION = 1.0
+    for cat, num, inputpath, expectedpath, context, options in read_manifest(
+        skiptests
+    ):
+        if inputpath.endswith(".jsonld"):  # toRdf
+            if expectedpath.endswith(".jsonld"):  # compact/expand/flatten
+                func = runner.do_test_json
+            else:  # toRdf
+                func = runner.do_test_parser
+        else:  # fromRdf
+            func = runner.do_test_serializer
+        # func.description = "%s-%s-%s" % (group, case)
+        yield func, TC_BASE, cat, num, inputpath, expectedpath, context, options
+
+
+@pytest.fixture(scope="module", autouse=True)
+def testsuide_dir():
     old_cwd = getcwd()
     chdir(test_dir)
-    runner.DEFAULT_PARSER_VERSION = 1.0
-    try:
-        for cat, num, inputpath, expectedpath, context, options in read_manifest(
-            skiptests
-        ):
-            if inputpath.endswith(".jsonld"):  # toRdf
-                if expectedpath.endswith(".jsonld"):  # compact/expand/flatten
-                    func = runner.do_test_json
-                else:  # toRdf
-                    func = runner.do_test_parser
-            else:  # fromRdf
-                func = runner.do_test_serializer
-            # func.description = "%s-%s-%s" % (group, case)
-            yield func, TC_BASE, cat, num, inputpath, expectedpath, context, options
-    finally:
-        rdflib.plugins.parsers.jsonld.ALLOW_LISTS_OF_LISTS = default_allow
-        chdir(old_cwd)
+    yield
+    chdir(old_cwd)
+
+
+@pytest.mark.parametrize(
+    "func, suite_base, cat, num, inputpath, expectedpath, context, options",
+    get_test_suite_cases(),
+)
+def test_suite(func, suite_base, cat, num, inputpath, expectedpath, context, options):
+    func(suite_base, cat, num, inputpath, expectedpath, context, options)
 
 
 if __name__ == "__main__":
