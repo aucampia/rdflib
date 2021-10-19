@@ -4,9 +4,10 @@ import os
 
 from rdflib import Graph
 from test import TEST_DIR
-from test.manifest import nose_tests, RDFT
+from test.manifest import RDFT, read_manifest
 
 from test.testutils import nose_tst_earl_report
+import pytest
 
 verbose = False
 
@@ -26,21 +27,14 @@ def nt(test):
 testers = {RDFT.TestNTriplesPositiveSyntax: nt, RDFT.TestNTriplesNegativeSyntax: nt}
 
 
-def test_nt(tests=None):
-    manifest_file = os.path.join(TEST_DIR, "w3c/nt/manifest.ttl")
-    for t in nose_tests(testers, manifest_file, legacy=True):
-        if tests:
-            for test in tests:
-                if test in t[1].uri:
-                    break
-            else:
-                continue
-        test_method = t[0]
-        test_arguments = t[1]
-        test_method(test_arguments)
+@pytest.mark.parametrize(
+    "type,test",
+    read_manifest(os.path.join(TEST_DIR, "w3c/nt/manifest.ttl"), legacy=True),
+)
+def test_manifest(type, test):
+    testers[type](test)
 
 
 if __name__ == "__main__":
-    verbose = True
-
-    nose_tst_earl_report(test_nt, "rdflib_nt")
+    # TODO FIXME: generate report.
+    pass

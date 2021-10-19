@@ -151,14 +151,7 @@ def read_manifest(f, base=None, legacy=False):
                 )
 
 
-@nottest
-def nose_tests(testers, manifest, base=None, legacy=False):
-    for _type, test in read_manifest(manifest, base, legacy):
-        if _type in testers:
-            yield testers[_type], test
-
-
-def run_test_manifest(subtests: SubTests, testers, manifest, base=None, legacy=False):
+def pytest_manifest(subtests: SubTests, testers, manifest, base=None, legacy=False):
     for _type, test in read_manifest(manifest, base, legacy):
         if _type in testers:
             with subtests.test(_type=_type, test=test):

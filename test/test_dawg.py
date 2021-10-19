@@ -8,8 +8,9 @@ import sys
 #           syntax-update-2/manifest#syntax-update-other-01
 from test import TEST_DIR
 from test.earl import report, add_test
-from test.manifest import nose_tests, UP, MF, run_test_manifest
+from test.manifest import UP, MF, read_manifest
 from pytest_subtests import SubTests
+import pytest
 
 sys.setrecursionlimit(6000)  # default is 1000
 
@@ -36,12 +37,10 @@ from rdflib.compat import decodeStringEscape, bopen
 from urllib.parse import urljoin
 from io import BytesIO
 
-from nose.tools import nottest, eq_
-from nose import SkipTest
-
 
 def eq(a, b, msg):
-    return eq_(a, b, msg + ": (%r!=%r)" % (a, b))
+    # return eq_(a, b, msg + ": (%r!=%r)" % (a, b))
+    assert a == b, msg + ": (%r!=%r)" % (a, b)
 
 
 def setFlags():
@@ -195,7 +194,6 @@ def pp_binding(solutions):
     )
 
 
-@nottest
 def update_test(t):
 
     # the update-eval tests refer to graphs on http://example.org
@@ -204,7 +202,7 @@ def update_test(t):
     uri, name, comment, data, graphdata, query, res, syntax = t
 
     if uri in skiptests:
-        raise SkipTest()
+        pytest.skip()
 
     try:
         g = Dataset()
@@ -326,7 +324,6 @@ def update_test(t):
         raise
 
 
-@nottest  # gets called by generator
 def query_test(t):
     uri, name, comment, data, graphdata, query, resfile, syntax = t
 
@@ -334,7 +331,7 @@ def query_test(t):
     rdflib_sparql_module.SPARQL_LOAD_GRAPHS = True
 
     if uri in skiptests:
-        raise SkipTest()
+        pytest.skip()
 
     def skip(reason="(none)"):
         print("Skipping %s from now on." % uri)
@@ -514,123 +511,36 @@ testers = {
 }
 
 
-def test_dawg(subtests: SubTests):
+@pytest.fixture(scope="module", autouse=True)
+def handle_flags():
+    setFlags()
+    yield
+    resetFlags()
 
-    try:
-        setFlags()
 
-        if SPARQL10Tests:
-            run_test_manifest(subtests, testers, "test/DAWG/data-r2/manifest-evaluation.ttl")
+@pytest.mark.parametrize(
+    "type,test", read_manifest("test/DAWG/data-r2/manifest-evaluation.ttl")
 
-        if SPARQL11Tests:
-            run_test_manifest(subtests, testers, "test/DAWG/data-sparql11/manifest-all.ttl")
 
-        if RDFLibTests:
-            run_test_manifest(subtests, testers, "test/DAWG/rdflib/manifest.ttl")
-    finally:
-        resetFlags()
+)
+def test_dawg_data_sparql10(type, test):
+    testers[type](test)
+
+
+@pytest.mark.parametrize(
+    "type,test", read_manifest("test/DAWG/data-sparql11/manifest-all.ttl")
+)
+def test_dawg_data_sparql11(type, test):
+    testers[type](test)
+
+
+@pytest.mark.parametrize(
+    "type,test", read_manifest("test/DAWG/rdflib/manifest.ttl")
+)
+def test_dawg_rdflib(type, test):
+    testers[type](test)
 
 
 if __name__ == "__main__":
-
-    import sys
-    import time
-
-    start = time.time()
-    if len(sys.argv) > 1:
-        NAME = sys.argv[1]
-        DEBUG_FAIL = True
-    i = 0
-    success = 0
-
-    skip = 0
-
-    for _type, t in test_dawg():
-
-        if NAME and not str(t[0]).startswith(NAME):
-            continue
-        i += 1
-        try:
-
-            _type(t)
-
-            add_test(t[0], "passed")
-            success += 1
-
-        except SkipTest as e:
-            msg = skiptests.get(t[0], e.args)
-            add_test(t[0], "untested", msg)
-            print("skipping %s - %s" % (t[0], msg))
-            skip += 1
-
-        except KeyboardInterrupt:
-            raise
-        except AssertionError:
-            add_test(t[0], "failed")
-        except:
-            add_test(t[0], "failed", "error")
-            import traceback
-
-            traceback.print_exc()
-            sys.stderr.write("%s\n" % t[0])
-
-    print("\n----------------------------------------------------\n")
-    print("Failed tests:")
-    for failed in failed_tests:
-        print(failed)
-
-    print("\n----------------------------------------------------\n")
-    print("Error tests:")
-    for error in error_tests:
-        print(error)
-
-    print("\n----------------------------------------------------\n")
-
-    print("Most common fails:")
-    for failed in fails.most_common(10):
-        failed_str = str(failed)
-        print(failed_str[:450] + (failed_str[450:] and "..."))
-
-    print("\n----------------------------------------------------\n")
-
-    if errors:
-        print("Most common errors:")
-        for error in errors.most_common(10):
-            print(error)
-    else:
-        print("(no errors!)")
-
-    f_sum = sum(fails.values())
-    e_sum = sum(errors.values())
-
-    if success + f_sum + e_sum + skip != i:
-        print("(Something is wrong, %d!=%d)" % (success + f_sum + e_sum + skip, i))
-
-    print(
-        "\n%d tests, %d passed, %d failed, %d errors, \
-          %d skipped (%.2f%% success)"
-        % (i, success, f_sum, e_sum, skip, 100.0 * success / i)
-    )
-    print("Took %.2fs" % (time.time() - start))
-
-    if not NAME:
-
-        now = isodate.datetime_isoformat(datetime.datetime.utcnow())
-
-        with open("testruns.txt", "a") as tf:
-            tf.write(
-                "%s\n%d tests, %d passed, %d failed, %d errors, %d "
-                "skipped (%.2f%% success)\n\n"
-                % (now, i, success, f_sum, e_sum, skip, 100.0 * success / i)
-            )
-
-        earl_report = os.path.join(
-            TEST_DIR, "../test_reports/rdflib_sparql-%s.ttl" % now.replace(":", "")
-        )
-
-        report.serialize(earl_report, format="n3")
-        report.serialize(
-            os.path.join(TEST_DIR, "../test_reports/rdflib_sparql-latest.ttl"),
-            format="n3",
-        )
-        print("Wrote EARL-report to '%s'" % earl_report)
+    # TODO FIXME: generate report.
+    pass
