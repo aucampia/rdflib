@@ -50,7 +50,7 @@ steps:
   - python setup.py install
   - black --config black.toml --check ./rdflib | true
   - flake8 --exit-zero rdflib
-  - pytest --cov
+  - pytest
 
 ---
 kind: pipeline
@@ -70,4 +70,4 @@ steps:
   - python setup.py install
   - black --config black.toml --check ./rdflib | true
   - flake8 --exit-zero rdflib
-  - pytest --cov
+  - pytest
