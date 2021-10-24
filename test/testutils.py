@@ -460,6 +460,11 @@ class ServedSimpleHTTPMockTests(unittest.TestCase):
 
 
 def eq_(lhs, rhs, msg=None):
+    """
+    This function mimicks the similar function from nosetest. Ideally nothing
+    should use it but there is a lot of code that still does and it's fairly
+    simple to just keep this small pollyfill here for now.
+    """
     if msg:
         assert lhs == rhs, msg
     else:

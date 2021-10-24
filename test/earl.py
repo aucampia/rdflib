@@ -62,6 +62,10 @@ class EARL(DefinedNamespace):
 
 
 class EarlReport:
+    """
+    This is a helper class for building an EARL report graph.
+    """
+
     def __init__(
         self,
         asserter_uri: Optional[str] = None,
@@ -190,7 +194,7 @@ def pytest_unconfigure(config):
         config.pluginmanager.unregister(earl)
 
 
-# https://docs.pytest.org/en/6.2.x/reference.html#pytest.hookspec.pytest_runtest_protocol
+# https://docs.pytest.org/en/latest/reference.html#pytest.hookspec.pytest_runtest_protocol
 
 
 class TestResult(enum.Enum):
@@ -214,11 +218,16 @@ class TestReportHelper:
 
 
 class EarlReporter:
+    """
+    This class is a pytest plugin that will write a EARL report with results for
+    every pytest which has a rdf_test_uri parameter that is a string or an
+    URIRef.
+    """
+
     def __init__(self, output_path: Path, report: Optional[EarlReport] = None) -> None:
         self.report = report if report is not None else EarlReport()
         self.output_path = output_path
 
-    # @pytest.mark.hookwrapper
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_makereport(
         self, item: Item, call: "CallInfo[None]"

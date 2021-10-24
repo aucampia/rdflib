@@ -37,7 +37,7 @@ Run tests with `pytest <https://docs.pytest.org/en/latest/>`_:
    $ pytest
 
 
-Specific tests can be run by file name. For example::
+Specific tests can be run by file name. For example:
 
 .. code-block:: bash
 

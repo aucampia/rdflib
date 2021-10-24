@@ -188,12 +188,3 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
                     res,
                     syntax,
                 )
-
-
-def pytest_manifest(subtests: SubTests, testers, manifest, base=None, legacy=False):
-    for _type, rdf_test_uri, rdf_test in read_manifest(manifest, base, legacy):
-        if _type in testers:
-            with subtests.test(
-                _type=_type, rdf_test_uri=rdf_test_uri, rdf_test=rdf_test
-            ):
-                testers[_type](rdf_test)
