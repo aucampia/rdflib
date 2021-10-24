@@ -2,7 +2,6 @@ RDFLib.sublime-project
 /docs/_build/
 RDFLib.sublime-workspace
 coverage/
-*.pyc
 /.hgtags
 /.hgignore
 build/
