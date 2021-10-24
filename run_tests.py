@@ -19,8 +19,7 @@ Coverage
 ========
 
 If ``pytest-cov`` is placed in $PYTHONPATH, it can be used to create coverage
-information (using the built-in coverage plugin of Nose) if the default
-option "--cov" is supplied.
+information if the "--cov" option is supplied.
 
 See <https://github.com/pytest-dev/pytest-cov> for details.
 

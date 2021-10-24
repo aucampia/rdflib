@@ -3,19 +3,22 @@ import logging
 from datetime import datetime
 from pathlib import Path
 from test.manifest import RDFT
-from typing import Generator, Optional, Tuple, cast
+from typing import TYPE_CHECKING, Generator, Optional, Tuple, cast
 
 import pytest
-from _pytest.main import Session
-from _pytest.python import CallSpec2
-from _pytest.reports import TestReport
-from _pytest.runner import CallInfo
-from pluggy._result import _Result
+
 from pytest import Item
 
 from rdflib import RDF, BNode, Graph, Literal, Namespace, URIRef
 from rdflib.namespace import DC, DOAP, FOAF, DefinedNamespace
 from rdflib.term import Node
+
+if TYPE_CHECKING:
+    from _pytest.main import Session
+    from _pytest.python import CallSpec2
+    from _pytest.reports import TestReport
+    from _pytest.runner import CallInfo
+    from pluggy._result import _Result
 
 
 class EARL(DefinedNamespace):
@@ -199,7 +202,7 @@ class TestResult(enum.Enum):
 
 class TestReportHelper:
     @classmethod
-    def get_rdf_test_uri(cls, report: TestReport) -> Optional[URIRef]:
+    def get_rdf_test_uri(cls, report: "TestReport") -> Optional[URIRef]:
         return next(
             (
                 cast(URIRef, item[1])
@@ -218,15 +221,15 @@ class EarlReporter:
     # @pytest.mark.hookwrapper
     @pytest.hookimpl(hookwrapper=True)
     def pytest_runtest_makereport(
-        self, item: Item, call: CallInfo[None]
-    ) -> Generator[None, _Result, None]:
+        self, item: Item, call: "CallInfo[None]"
+    ) -> Generator[None, "_Result", None]:
         result = yield
 
-        report: TestReport = result.get_result()
+        report: "TestReport" = result.get_result()
 
         if not hasattr(item, "callspec"):
             return
-        callspec: CallSpec2 = getattr(item, "callspec")
+        callspec: "CallSpec2" = getattr(item, "callspec")
         rdf_test_uri = callspec.params.get("rdf_test_uri")
         if rdf_test_uri is None:
             return
@@ -238,7 +241,7 @@ class EarlReporter:
 
         report.user_properties.append((RDFT.Test, rdf_test_uri))
 
-    def append_result(self, report: TestReport, test_result: TestResult) -> None:
+    def append_result(self, report: "TestReport", test_result: TestResult) -> None:
         rdf_test_uri = TestReportHelper.get_rdf_test_uri(report)
         if rdf_test_uri is None:
             # No RDF test
@@ -252,7 +255,7 @@ class EarlReporter:
         else:
             self.report.add_test_outcome(rdf_test_uri, EARL.cantTell)
 
-    def pytest_runtest_logreport(self, report: TestReport) -> None:
+    def pytest_runtest_logreport(self, report: "TestReport") -> None:
         if report.passed:
             if report.when == "call":  # ignore setup/teardown
                 self.append_result(report, TestResult.PASS)
@@ -264,5 +267,5 @@ class EarlReporter:
         elif report.skipped:
             self.append_result(report, TestResult.SKIP)
 
-    def pytest_sessionfinish(self, session: Session):
+    def pytest_sessionfinish(self, session: "Session"):
         self.report.graph.serialize(format="turtle", destination=self.output_path)
