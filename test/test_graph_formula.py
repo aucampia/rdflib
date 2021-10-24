@@ -125,7 +125,7 @@ def checkFormulaStore(store="default", configString=None):
         raise
 
 
-def testFormulaStores():
+def get_formula_stores_tests():
     pluginname = None
 
     for s in plugin.plugins(pluginname, plugin.Store):
@@ -138,4 +138,8 @@ def testFormulaStores():
             continue
         if not s.getClass().formula_aware:
             continue
-        checkFormulaStore(s.name)
+        yield checkFormulaStore, s.name
+
+@pytest.mark.parametrize("checker, name", get_formula_stores_tests())
+def test_formula_stores(checker, name) -> None:
+    checker(name)
