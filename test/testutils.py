@@ -29,7 +29,6 @@ from threading import Thread
 from http.server import BaseHTTPRequestHandler, HTTPServer, SimpleHTTPRequestHandler
 import email.message
 from nose import SkipTest
-from .earl import add_test, report
 import unittest
 
 from rdflib import BNode, Graph, ConjunctiveGraph
@@ -45,7 +44,6 @@ if TYPE_CHECKING:
 # TODO: make an introspective version (like this one) of
 # rdflib.graphutils.isomorphic and use instead.
 from test import TEST_DIR
-from test.earl import add_test, report
 
 
 def crapCompare(g1, g2):

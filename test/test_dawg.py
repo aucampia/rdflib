@@ -7,8 +7,7 @@ import sys
 # http://www.w3.org/2009/sparql/docs/tests/data-sparql11/
 #           syntax-update-2/manifest#syntax-update-other-01
 from test import TEST_DIR
-from test.earl import report, add_test
-from test.manifest import UP, MF, read_manifest
+from test.manifest import UP, MF, RDFTest, read_manifest
 from pytest_subtests import SubTests
 import pytest
 
@@ -21,9 +20,11 @@ from collections import Counter
 import datetime
 import isodate
 import typing
+from typing import Dict, Callable
 
 
 from rdflib import Dataset, Graph, URIRef, BNode
+from rdflib.term import Node
 from rdflib.query import Result
 from rdflib.compare import isomorphic
 
@@ -497,7 +498,7 @@ def query_test(t):
         raise
 
 
-testers = {
+testers: Dict[Node, Callable[[RDFTest], None]] = {
     UP.UpdateEvaluationTest: update_test,
     MF.UpdateEvaluationTest: update_test,
     MF.PositiveUpdateSyntaxTest11: update_test,
@@ -517,28 +518,23 @@ def handle_flags():
 
 
 @pytest.mark.parametrize(
-    "type,test", read_manifest("test/DAWG/data-r2/manifest-evaluation.ttl")
-
-
+    "rdf_test_uri, type, rdf_test",
+    read_manifest("test/DAWG/data-r2/manifest-evaluation.ttl"),
 )
-def test_dawg_data_sparql10(type, test):
-    testers[type](test)
+def test_dawg_data_sparql10(rdf_test_uri: URIRef, type: Node, rdf_test: RDFTest):
+    testers[type](rdf_test)
 
 
 @pytest.mark.parametrize(
-    "type,test", read_manifest("test/DAWG/data-sparql11/manifest-all.ttl")
+    "rdf_test_uri, type, rdf_test",
+    read_manifest("test/DAWG/data-sparql11/manifest-all.ttl"),
 )
-def test_dawg_data_sparql11(type, test):
-    testers[type](test)
+def test_dawg_data_sparql11(rdf_test_uri: URIRef, type: Node, rdf_test: RDFTest):
+    testers[type](rdf_test)
 
 
 @pytest.mark.parametrize(
-    "type,test", read_manifest("test/DAWG/rdflib/manifest.ttl")
+    "rdf_test_uri, type, rdf_test", read_manifest("test/DAWG/rdflib/manifest.ttl")
 )
-def test_dawg_rdflib(type, test):
-    testers[type](test)
-
-
-if __name__ == "__main__":
-    # TODO FIXME: generate report.
-    pass
+def test_dawg_rdflib(rdf_test_uri: URIRef, type: Node, rdf_test: RDFTest):
+    testers[type](rdf_test)

@@ -2,6 +2,8 @@ from os import environ, chdir, getcwd, path as p
 import json
 
 import pytest
+
+from rdflib.term import URIRef
 from . import runner
 
 
@@ -206,7 +208,10 @@ def get_test_suite_cases():
                 func = runner.do_test_parser
         else:  # fromRdf
             func = runner.do_test_serializer
-        yield func, TC_BASE, cat, num, inputpath, expectedpath, context, options
+        rdf_test_uri = URIRef("{0}{1}-manifest#t{2}".format(
+            TC_BASE, cat, num
+        ))
+        yield rdf_test_uri, func, TC_BASE, cat, num, inputpath, expectedpath, context, options
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -218,8 +223,8 @@ def global_state():
 
 
 @pytest.mark.parametrize(
-    "func, suite_base, cat, num, inputpath, expectedpath, context, options",
+    "rdf_test_uri, func, suite_base, cat, num, inputpath, expectedpath, context, options",
     get_test_suite_cases(),
 )
-def test_suite(func, suite_base, cat, num, inputpath, expectedpath, context, options):
+def test_suite(rdf_test_uri: URIRef, func, suite_base, cat, num, inputpath, expectedpath, context, options):
     func(suite_base, cat, num, inputpath, expectedpath, context, options)
