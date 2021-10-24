@@ -57,37 +57,37 @@ Some examples of generating test reports:
 .. code-block:: bash
 
    pytest \
-      --earl-asserter-uri=http://example.com \
+      --earl-asserter-homepage=http://example.com \
       --earl-asserter-name 'Example Name' \
       --earl-report=/var/tmp/earl/earl-jsonld-local.ttl \
       test/jsonld/test_localsuite.py
 
    pytest \
-      --earl-asserter-uri=http://example.com \
+      --earl-asserter-homepage=http://example.com \
       --earl-asserter-name 'Example Name' \
       --earl-report=/var/tmp/earl/earl-jsonld-v1.1.ttl \
       test/jsonld/test_onedotone.py
 
    pytest \
-      --earl-asserter-uri=http://example.com \
+      --earl-asserter-homepage=http://example.com \
       --earl-asserter-name 'Example Name' \
       --earl-report=/var/tmp/earl/earl-jsonld-v1.0.ttl \
       test/jsonld/test_testsuite.py
 
    pytest \
-      --earl-asserter-uri=http://example.com \
+      --earl-asserter-homepage=http://example.com \
       --earl-asserter-name 'Example Name' \
-      --earl-report=/var/tmp/earl/earl-dawg.ttl \
+      --earl-report=/var/tmp/earl/earl-sparql.ttl \
       test/test_dawg.py
 
    pytest \
-      --earl-asserter-uri=http://example.com \
+      --earl-asserter-homepage=http://example.com \
       --earl-asserter-name 'Example Name' \
       --earl-report=/var/tmp/earl/earl-nquads.ttl \
       test/test_nquads_w3c.py
 
    pytest \
-      --earl-asserter-uri=http://example.com \
+      --earl-asserter-homepage=http://example.com \
       --earl-asserter-name 'Example Name' \
       --earl-report=/var/tmp/earl/earl-nt.ttl \
       test/test_nt_w3c.py

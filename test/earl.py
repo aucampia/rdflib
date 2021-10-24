@@ -60,7 +60,10 @@ class EARL(DefinedNamespace):
 
 class EarlReport:
     def __init__(
-        self, asserter_uri: Optional[str] = None, asserter_name: Optional[str] = None
+        self,
+        asserter_uri: Optional[str] = None,
+        asserter_homepage: Optional[str] = None,
+        asserter_name: Optional[str] = None,
     ) -> None:
         self.graph = graph = Graph()
         graph.bind("foaf", FOAF)
@@ -70,21 +73,34 @@ class EarlReport:
 
         self.asserter: Node
         asserter: Node
-        if asserter_uri is not None:
-            self.asserter = asserter = URIRef(asserter_uri)
+        if asserter_uri is not None or asserter_homepage is not None:
+            self.asserter = asserter = URIRef(
+                asserter_homepage if asserter_uri is None else asserter_uri
+            )
             graph.add((asserter, RDF.type, FOAF.Person))
         else:
             self.asserter = asserter = BNode()
             graph.add((asserter, RDF.type, FOAF.Person))
         if asserter_name:
             graph.add((asserter, FOAF.name, Literal(asserter_name)))
+        if asserter_homepage:
+            graph.add((asserter, FOAF.homepage, URIRef(asserter_homepage)))
 
         self.project = project = URIRef("https://github.com/RDFLib/rdflib")
 
         graph.add((project, DOAP.homepage, project))
-        graph.add((project, DOAP.name, Literal("rdflib")))
+        graph.add((project, DOAP.name, Literal("RDFLib")))
         graph.add((project, RDF.type, DOAP.Project))
         graph.add((project, DOAP["programming-language"], Literal("Python")))
+        graph.add(
+            (
+                project,
+                DOAP.description,
+                Literal(
+                    "RDFLib is a pure Python package for working with RDF.", lang="en"
+                ),
+            )
+        )
 
         self.now = Literal(datetime.now())
 
@@ -95,7 +111,6 @@ class EarlReport:
         assertion = BNode()
         graph.add((assertion, RDF.type, EARL.Assertion))
         graph.add((assertion, EARL.test, test_id))
-        graph.add((assertion, DC.date, self.now))
         graph.add((assertion, EARL.subject, self.project))
         graph.add((assertion, EARL.mode, EARL.automatic))
         if self.asserter:
@@ -104,6 +119,7 @@ class EarlReport:
         result = BNode()
         graph.add((assertion, EARL.result, result))
         graph.add((result, RDF.type, EARL.TestResult))
+        graph.add((result, DC.date, self.now))
         graph.add((result, EARL.outcome, outcome))
         if info:
             graph.add((result, EARL.info, info))
@@ -128,7 +144,16 @@ def pytest_addoption(parser):
         dest="earl_asserter_uri",
         metavar="uri",
         default=None,
-        help="Set the EARL reporter URI.",
+        help="Set the EARL asserter URI, defaults to the asserter homepage if not set.",
+    )
+
+    group.addoption(
+        "--earl-asserter-homepage",
+        action="store",
+        dest="earl_asserter_homepage",
+        metavar="URL",
+        default=None,
+        help="Set the EARL asserter homepage.",
     )
 
     group.addoption(
@@ -137,7 +162,7 @@ def pytest_addoption(parser):
         dest="earl_asserter_name",
         metavar="name",
         default=None,
-        help="Set the EARL reporter name.",
+        help="Set the EARL asserter name.",
     )
 
 
@@ -147,7 +172,9 @@ def pytest_configure(config):
         config._earl = EarlReporter(
             Path(earl_path),
             EarlReport(
-                config.option.earl_asserter_uri, config.option.earl_asserter_name
+                asserter_uri=config.option.earl_asserter_uri,
+                asserter_name=config.option.earl_asserter_name,
+                asserter_homepage=config.option.earl_asserter_homepage,
             ),
         )
         config.pluginmanager.register(config._earl)
@@ -230,7 +257,7 @@ class EarlReporter:
             if report.when == "call":  # ignore setup/teardown
                 self.append_result(report, TestResult.PASS)
         elif report.failed:
-            if report.when == "call":
+            if report.when == "call":  # ignore setup/teardown
                 self.append_result(report, TestResult.FAIL)
             else:
                 self.append_result(report, TestResult.ERROR)
