@@ -14,6 +14,7 @@ else:
 
 from os import sep
 from os.path import normpath
+import re
 
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
@@ -44,7 +45,26 @@ def split_iri(iri):
     return iri, None
 
 
-def norm_url(base, url):
+# https://datatracker.ietf.org/doc/html/rfc3986#appendix-A defines
+# >    absolute-URI  = scheme ":" hier-part [ "?" query ]
+# >    hier-part     = "//" authority path-abempty
+# >                  / path-absolute
+# >                  / path-rootless
+# >                  / path-empty
+# >    scheme        = ALPHA *( ALPHA / DIGIT / "+" / "-" / "." )
+# https://datatracker.ietf.org/doc/html/rfc3986#section-2.3 defines
+# > For consistency, percent-encoded octets in the ranges of ALPHA
+# > (%41-%5A and %61-%7A), DIGIT (%30-%39), hyphen (%2D), period (%2E),
+# > underscore (%5F), or tilde (%7E) should not be created by URI
+# > producers and, when found in a URI, should be decoded to their
+# > corresponding unreserved characters by URI normalizers.
+# _abs_url_re is crafted to match `scheme ":" "//"` which if matched will imply that the url is absolute.
+_absolute_url_re = re.compile(
+    r"^[\x41-\x5A\x61-\x7A][\x41-\x5A\x61-\x7A\x30-\x39+.-]*://"
+)
+
+
+def norm_url(base: str, url: str) -> str:
     """
     >>> norm_url('http://example.org/', '/one')
     'http://example.org/one'
@@ -58,8 +78,12 @@ def norm_url(base, url):
     'http://example.net/one'
     >>> norm_url('http://example.org/', 'http://example.org//one')
     'http://example.org//one'
+    >>> norm_url('http://example.org/', 'http://example.org')
+    'http://example.org'
+    >>> norm_url('http://example.org/', 'mailto:name@example.com')
+    'mailto:name@example.com'
     """
-    if "://" in url:
+    if _absolute_url_re.match(url):
         return url
     parts = urlsplit(urljoin(base, url))
     path = normpath(parts[2])
