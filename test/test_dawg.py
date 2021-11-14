@@ -2,6 +2,7 @@ from __future__ import print_function
 
 import os
 import sys
+from io import TextIOWrapper
 
 # Needed to pass
 # http://www.w3.org/2009/sparql/docs/tests/data-sparql11/
@@ -395,7 +396,7 @@ def query_test(t: RDFTest):
                 if resfile.endswith("srj"):
                     res = Result.parse(f, format="json")
                 elif resfile.endswith("tsv"):
-                    res = Result.parse(f, format="tsv")
+                    res = Result.parse(TextIOWrapper(f), format="tsv")
 
                 elif resfile.endswith("csv"):
                     res = Result.parse(f, format="csv")
