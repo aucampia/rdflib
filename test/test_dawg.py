@@ -10,6 +10,8 @@ from test import TEST_DIR
 from test.manifest import UP, MF, RDFTest, read_manifest
 import pytest
 
+from test.testutils import file_uri_to_path
+
 sys.setrecursionlimit(6000)  # default is 1000
 
 
@@ -194,12 +196,14 @@ def pp_binding(solutions):
     )
 
 
-def update_test(t):
+def update_test(t: RDFTest):
 
     # the update-eval tests refer to graphs on http://example.org
     rdflib_sparql_module.SPARQL_LOAD_GRAPHS = False
 
     uri, name, comment, data, graphdata, query, res, syntax = t
+
+    query_path = file_uri_to_path(query)
 
     if uri in skiptests:
         pytest.skip()
@@ -209,11 +213,11 @@ def update_test(t):
 
         if not res:
             if syntax:
-                with bopen(query[7:]) as f:
+                with bopen(query_path) as f:
                     translateUpdate(parseUpdate(f))
             else:
                 try:
-                    with bopen(query[7:]) as f:
+                    with bopen(query_path) as f:
                         translateUpdate(parseUpdate(f))
                     raise AssertionError("Query shouldn't have parsed!")
                 except:
@@ -230,7 +234,7 @@ def update_test(t):
             for x, l in graphdata:
                 g.load(x, publicID=URIRef(l), format=_fmt(x))
 
-        with bopen(query[7:]) as f:
+        with bopen(query_path) as f:
             req = translateUpdate(parseUpdate(f))
         evalUpdate(g, req)
 
@@ -283,33 +287,37 @@ def update_test(t):
             if data:
                 print("----------------- DATA --------------------")
                 print(">>>", data)
-                print(bopen_read_close(data[7:]))
+                data_path = file_uri_to_path(data)
+                print(bopen_read_close(data_path))
             if graphdata:
                 print("----------------- GRAPHDATA --------------------")
                 for x, l in graphdata:
                     print(">>>", x, l)
-                    print(bopen_read_close(x[7:]))
+                    x_path = file_uri_to_path(x)
+                    print(bopen_read_close(x_path))
 
             print("----------------- Request -------------------")
             print(">>>", query)
-            print(bopen_read_close(query[7:]))
+            print(bopen_read_close(query_path))
 
             if res:
                 if resdata:
                     print("----------------- RES DATA --------------------")
                     print(">>>", resdata)
-                    print(bopen_read_close(resdata[7:]))
+                    resdata_path = file_uri_to_path(resdata)
+                    print(bopen_read_close(resdata_path))
                 if resgraphdata:
                     print("----------------- RES GRAPHDATA -------------------")
                     for x, l in resgraphdata:
                         print(">>>", x, l)
-                        print(bopen_read_close(x[7:]))
+                        x_path = file_uri_to_path(x)
+                        print(bopen_read_close(x_path))
 
             print("------------- MY RESULT ----------")
             print(g.serialize(format="trig"))
 
             try:
-                pq = translateUpdate(parseUpdate(bopen_read_close(query[7:])))
+                pq = translateUpdate(parseUpdate(bopen_read_close(query_path)))
                 print("----------------- Parsed ------------------")
                 pprintAlgebra(pq)
                 # print pq
@@ -324,11 +332,15 @@ def update_test(t):
         raise
 
 
-def query_test(t):
+def query_test(t: RDFTest):
     uri, name, comment, data, graphdata, query, resfile, syntax = t
 
     # the query-eval tests refer to graphs to load by resolvable filenames
     rdflib_sparql_module.SPARQL_LOAD_GRAPHS = True
+
+    query_path = file_uri_to_path(query)
+
+    resfile_path = file_uri_to_path(resfile) if resfile else None
 
     if uri in skiptests:
         pytest.skip()
@@ -352,13 +364,13 @@ def query_test(t):
 
             if syntax:
                 translateQuery(
-                    parseQuery(bopen_read_close(query[7:])), base=urljoin(query, ".")
+                    parseQuery(bopen_read_close(query_path)), base=urljoin(query, ".")
                 )
             else:
                 # negative syntax test
                 try:
                     translateQuery(
-                        parseQuery(bopen_read_close(query[7:])),
+                        parseQuery(bopen_read_close(query_path)),
                         base=urljoin(query, "."),
                     )
 
@@ -368,7 +380,7 @@ def query_test(t):
             return
 
         # eval test - carry out query
-        res2 = g.query(bopen_read_close(query[7:]), base=urljoin(query, "."))
+        res2 = g.query(bopen_read_close(query_path), base=urljoin(query, "."))
 
         if resfile.endswith("ttl"):
             resg = Graph()
@@ -379,7 +391,7 @@ def query_test(t):
             resg.load(resfile, publicID=resfile)
             res = RDFResultParser().parse(resg)
         else:
-            with bopen(resfile[7:]) as f:
+            with bopen(resfile_path) as f:
                 if resfile.endswith("srj"):
                     res = Result.parse(f, format="json")
                 elif resfile.endswith("tsv"):
@@ -401,6 +413,10 @@ def query_test(t):
                 else:
                     res = Result.parse(f, format="xml")
 
+        print(f"res={res}")
+        print(f"res2={res2}")
+        assert res is not None
+        assert res2 is not None
         if not DETAILEDASSERT:
             eq(res.type, res2.type, "Types do not match")
             if res.type == "SELECT":
@@ -467,23 +483,25 @@ def query_test(t):
             if data:
                 print("----------------- DATA --------------------")
                 print(">>>", data)
-                print(bopen_read_close(data[7:]))
+                data_path = file_uri_to_path(data)
+                print(bopen_read_close(data_path))
             if graphdata:
                 print("----------------- GRAPHDATA --------------------")
                 for x in graphdata:
                     print(">>>", x)
-                    print(bopen_read_close(x[7:]))
+                    x_path = file_uri_to_path(x)
+                    print(bopen_read_close(x_path))
 
             print("----------------- Query -------------------")
             print(">>>", query)
-            print(bopen_read_close(query[7:]))
+            print(bopen_read_close(query_path))
             if resfile:
                 print("----------------- Res -------------------")
                 print(">>>", resfile)
-                print(bopen_read_close(resfile[7:]))
+                print(bopen_read_close(resfile_path))
 
             try:
-                pq = parseQuery(bopen_read_close(query[7:]))
+                pq = parseQuery(bopen_read_close(query_path))
                 print("----------------- Parsed ------------------")
                 pprintAlgebra(translateQuery(pq, base=urljoin(query, ".")))
             except:
