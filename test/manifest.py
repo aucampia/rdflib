@@ -2,7 +2,7 @@ from typing import Iterable, List, NamedTuple, Optional, Tuple
 
 from rdflib import RDF, RDFS, Graph, Namespace
 from rdflib.namespace import DefinedNamespace
-from rdflib.term import Node, URIRef
+from rdflib.term import Identifier, Node, URIRef
 
 MF = Namespace("http://www.w3.org/2001/sw/DataAccess/tests/test-manifest#")
 QT = Namespace("http://www.w3.org/2001/sw/DataAccess/tests/test-query#")
@@ -47,10 +47,10 @@ class RDFTest(NamedTuple):
     uri: URIRef
     name: str
     comment: str
-    data: Node
-    graphdata: Optional[List[Node]]
-    action: Node
-    result: Optional[Node]
+    data: Identifier
+    graphdata: Optional[List[Identifier]]
+    action: Identifier
+    result: Optional[Identifier]
     syntax: bool
 
 
