@@ -43,7 +43,7 @@ def turtle(test):
                     print(t)
                 raise Exception("Graphs do not match!")
 
-            assert isomorphic(g, res), "graphs must be the same"
+            assert isomorphic(g, res), "graphs must be the same, expected\n%s\n, got\n%s" % ( g.serialize(), res.serialize() )
 
     except:
         if test.syntax:

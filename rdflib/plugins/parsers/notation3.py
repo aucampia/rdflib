@@ -33,6 +33,7 @@ import sys
 import os
 import re
 import codecs
+from typing import IO
 import warnings
 
 from decimal import Decimal
@@ -1902,8 +1903,8 @@ class TurtleParser(Parser):
     def __init__(self):
         pass
 
-    def parse(self, source, graph, encoding="utf-8", turtle=True):
-
+    def parse(self, source: IO[bytes], graph, encoding="utf-8", turtle=True):
+        print(f"source={source!r}")
         if encoding not in [None, "utf-8"]:
             raise ParserError(
                 ("N3/Turtle files are always utf-8 encoded, I was passed: %s")
