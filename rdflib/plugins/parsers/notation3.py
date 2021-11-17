@@ -739,7 +739,7 @@ class SinkParser:
         # was: self._store.startDoc()
         self._store.startDoc(self._formula)
 
-    def endDoc(self) -> Optional[Formula]:
+    def endDoc(self) -> Optional["Formula"]:
         """Signal end of document and stop parsing. returns formula"""
         self._store.endDoc(self._formula)  # don't canonicalize yet
         return self._formula
