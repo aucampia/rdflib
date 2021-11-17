@@ -30,8 +30,10 @@ def turtle(test: RDFTest):
             raise AssertionError("Input shouldn't have parsed!")
 
         if test.result:  # eval test
+            result_path = file_uri_to_path(test.result, Path)
             res = Graph()
-            res.parse(test.result, format="nt")
+            with result_path.open("rb") as fh:
+                res.parse(fh, format="nt")
 
             if verbose:
                 both, first, second = graph_diff(g, res)
