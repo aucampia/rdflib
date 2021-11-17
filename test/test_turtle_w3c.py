@@ -1,6 +1,7 @@
 """This runs the turtle tests for the W3C RDF Working Group's N-Quads
 test suite."""
 
+from pathlib import Path
 from typing import Callable, Dict
 from rdflib import Graph
 from rdflib.namespace import split_uri
@@ -9,17 +10,22 @@ from rdflib.term import Node, URIRef
 
 from test.manifest import RDFT, RDFTest, read_manifest
 import pytest
+from .testutils import file_uri_to_path
 
 verbose = False
 
 
-def turtle(test):
+def turtle(test: RDFTest):
     g = Graph()
 
     try:
         base = "http://www.w3.org/2013/TurtleTests/" + split_uri(test.action)[1]
 
-        g.parse(test.action, publicID=base, format="turtle")
+        action_path = file_uri_to_path(test.action, Path)
+
+        with action_path.open("rb") as fh:
+            g.parse(fh, publicID=base, format="turtle")
+        # g.parse(test.action, publicID=base, format="turtle")
         if not test.syntax:
             raise AssertionError("Input shouldn't have parsed!")
 
