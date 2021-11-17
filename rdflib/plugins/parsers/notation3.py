@@ -452,7 +452,7 @@ class SinkParser:
     def formula(self):
         return self._formula
 
-    def loadStream(self, stream: Union[IO[str], IO[bytes]]) -> Optional[Formula]:
+    def loadStream(self, stream: Union[IO[str], IO[bytes]]) -> Optional["Formula"]:
         return self.loadBuf(stream.read())  # Not ideal
 
     def loadBuf(self, buf: Union[str, bytes]):
