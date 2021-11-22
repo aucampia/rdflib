@@ -1,4 +1,4 @@
-from typing import Optional, Union, Type, cast, overload, Generator, Tuple
+from typing import IO, Optional, Union, Type, cast, overload, Generator, Tuple
 import logging
 from warnings import warn
 import random
@@ -1148,7 +1148,7 @@ class Graph(Node):
 
     def parse(
         self,
-        source=None,
+        source: Optional[Union[IO[bytes],IO[str]]]=None,
         publicID=None,
         format=None,
         location=None,
