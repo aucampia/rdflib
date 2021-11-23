@@ -1,5 +1,6 @@
 from os import environ, chdir, getcwd, path as p
 import json
+import os
 from typing import Tuple
 
 import pytest
@@ -136,6 +137,10 @@ known_bugs: Tuple[str, ...] = (
     # TODO: Rdflib should silently reject bad predicate URIs
     "toRdf/wf02-in",
 )
+
+if os.name == "nt":
+    # nquad parser does not correctly handle unnormalized unicode on windows.
+    known_bugs += ("toRdf/js11-in", )
 
 TC_BASE = "https://w3c.github.io/json-ld-api/tests/"
 allow_lists_of_lists = True
