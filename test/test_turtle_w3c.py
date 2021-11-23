@@ -21,19 +21,13 @@ def turtle(test: RDFTest):
     try:
         base = "http://www.w3.org/2013/TurtleTests/" + split_uri(test.action)[1]
 
-        action_path = file_uri_to_path(test.action, Path)
-
-        with action_path.open("rb") as fh:
-            g.parse(fh, publicID=base, format="turtle")
-        # g.parse(test.action, publicID=base, format="turtle")
+        g.parse(test.action, publicID=base, format="turtle")
         if not test.syntax:
             raise AssertionError("Input shouldn't have parsed!")
 
         if test.result:  # eval test
-            result_path = file_uri_to_path(test.result, Path)
             res = Graph()
-            with result_path.open("r", newline="\n") as fh:
-                res.parse(fh, format="nt")
+            res.parse(test.result, format="nt")
 
             if verbose:
                 both, first, second = graph_diff(g, res)
