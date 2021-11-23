@@ -1,4 +1,15 @@
-from typing import IO, Optional, Union, Type, cast, overload, Generator, Tuple
+from typing import (
+    IO,
+    BinaryIO,
+    Optional,
+    TextIO,
+    Union,
+    Type,
+    cast,
+    overload,
+    Generator,
+    Tuple,
+)
 import logging
 from warnings import warn
 import random
@@ -9,7 +20,7 @@ from rdflib.term import BNode, Node, URIRef, Literal, Genid
 from rdflib.paths import Path
 from rdflib.store import Store
 from rdflib.serializer import Serializer
-from rdflib.parser import Parser, create_input_source
+from rdflib.parser import InputSource, Parser, create_input_source
 from rdflib.namespace import NamespaceManager
 from rdflib.resource import Resource
 from rdflib.collection import Collection
@@ -1148,12 +1159,14 @@ class Graph(Node):
 
     def parse(
         self,
-        source: Optional[Union[IO[bytes],IO[str]]]=None,
-        publicID=None,
-        format=None,
-        location=None,
-        file=None,
-        data=None,
+        source: Optional[
+            Union[IO[bytes], TextIO, InputSource, str, bytes, pathlib.PurePath]
+        ] = None,
+        publicID: Optional[str] = None,
+        format: Optional[str] = None,
+        location: Optional[str] = None,
+        file: Optional[Union[BinaryIO, TextIO]] = None,
+        data: Optional[Union[str, bytes]] = None,
         **args,
     ):
         """
@@ -1241,16 +1254,16 @@ class Graph(Node):
         if format is None:
             if (
                 hasattr(source, "file")
-                and getattr(source.file, "name", None)
-                and isinstance(source.file.name, str)
+                and getattr(source.file, "name", None)  # type: ignore[attr-defined]
+                and isinstance(source.file.name, str)  # type: ignore[attr-defined]
             ):
-                format = rdflib.util.guess_format(source.file.name)
+                format = rdflib.util.guess_format(source.file.name)  # type: ignore[attr-defined]
             if format is None:
                 format = "turtle"
                 could_not_guess_format = True
         parser = plugin.get(format, Parser)()
         try:
-            parser.parse(source, self, **args)
+            parser.parse(source, self, **args)  # type: ignore[call-arg]
         except SyntaxError as se:
             if could_not_guess_format:
                 raise ParserError(
@@ -1712,12 +1725,14 @@ class ConjunctiveGraph(Graph):
 
     def parse(
         self,
-        source=None,
-        publicID=None,
-        format=None,
-        location=None,
-        file=None,
-        data=None,
+        source: Optional[
+            Union[IO[bytes], TextIO, InputSource, str, bytes, pathlib.PurePath]
+        ] = None,
+        publicID: Optional[str] = None,
+        format: Optional[str] = None,
+        location: Optional[str] = None,
+        file: Optional[Union[BinaryIO, TextIO]] = None,
+        data: Optional[Union[str, bytes]] = None,
         **args,
     ):
         """

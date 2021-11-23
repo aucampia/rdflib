@@ -479,7 +479,7 @@ PurePathT = TypeVar("PurePathT", bound=PurePath)
 
 def file_uri_to_path(
     file_uri: str,
-    path_class: Type[PurePathT] = PurePath,
+    path_class: Type[PurePathT] = PurePath,  # type: ignore[assignment]
     url2pathname: Optional[Callable[[str], str]] = None,
 ) -> PurePathT:
     """

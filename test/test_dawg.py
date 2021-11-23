@@ -1,6 +1,7 @@
 from __future__ import print_function
 
 import os
+from pathlib import PurePath
 import sys
 from io import TextIOWrapper
 
@@ -204,7 +205,7 @@ def update_test(t: RDFTest):
 
     uri, name, comment, data, graphdata, query, res, syntax = t
 
-    query_path = file_uri_to_path(query)
+    query_path: PurePath = file_uri_to_path(query)
 
     if uri in skiptests:
         pytest.skip()
@@ -288,13 +289,13 @@ def update_test(t: RDFTest):
             if data:
                 print("----------------- DATA --------------------")
                 print(">>>", data)
-                data_path = file_uri_to_path(data)
+                data_path: PurePath = file_uri_to_path(data)
                 print(bopen_read_close(data_path))
             if graphdata:
                 print("----------------- GRAPHDATA --------------------")
                 for x, l in graphdata:
                     print(">>>", x, l)
-                    x_path = file_uri_to_path(x)
+                    x_path: PurePath = file_uri_to_path(x)
                     print(bopen_read_close(x_path))
 
             print("----------------- Request -------------------")
@@ -305,7 +306,7 @@ def update_test(t: RDFTest):
                 if resdata:
                     print("----------------- RES DATA --------------------")
                     print(">>>", resdata)
-                    resdata_path = file_uri_to_path(resdata)
+                    resdata_path: PurePath = file_uri_to_path(resdata)
                     print(bopen_read_close(resdata_path))
                 if resgraphdata:
                     print("----------------- RES GRAPHDATA -------------------")
@@ -339,7 +340,7 @@ def query_test(t: RDFTest):
     # the query-eval tests refer to graphs to load by resolvable filenames
     rdflib_sparql_module.SPARQL_LOAD_GRAPHS = True
 
-    query_path = file_uri_to_path(query)
+    query_path: PurePath = file_uri_to_path(query)
 
     resfile_path = file_uri_to_path(resfile) if resfile else None
 
@@ -484,13 +485,13 @@ def query_test(t: RDFTest):
             if data:
                 print("----------------- DATA --------------------")
                 print(">>>", data)
-                data_path = file_uri_to_path(data)
+                data_path: PurePath = file_uri_to_path(data)
                 print(bopen_read_close(data_path))
             if graphdata:
                 print("----------------- GRAPHDATA --------------------")
                 for x in graphdata:
                     print(">>>", x)
-                    x_path = file_uri_to_path(x)
+                    x_path: PurePath = file_uri_to_path(x)
                     print(bopen_read_close(x_path))
 
             print("----------------- Query -------------------")

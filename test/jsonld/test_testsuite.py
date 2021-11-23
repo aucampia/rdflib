@@ -1,5 +1,6 @@
 from os import environ, chdir, getcwd, path as p
 import json
+from typing import Tuple
 
 import pytest
 import rdflib
@@ -8,7 +9,7 @@ from rdflib.term import URIRef
 from . import runner
 
 
-unsupported_tests = ("frame", "normalize")
+unsupported_tests: Tuple[str, ...] = ("frame", "normalize")
 unsupported_tests += (
     "error",
     "remote",
@@ -16,7 +17,7 @@ unsupported_tests += (
 unsupported_tests += ("flatten", "compact", "expand")
 unsupported_tests += ("html",)
 
-known_bugs = (
+known_bugs: Tuple[str, ...] = (
     # invalid nquads (bnode as predicate)
     # "toRdf-0078-in", "toRdf-0108-in",
     # TODO: Literal doesn't preserve representations
