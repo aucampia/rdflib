@@ -1,6 +1,10 @@
 # tests for the turtle2 serializer
 
-from rdflib import Graph
+import logging
+from typing import Union
+from rdflib import Graph, Namespace, Literal
+import pytest
+from pathlib import Path
 
 
 def test_turtle2():
@@ -205,3 +209,28 @@ ex:c
     # re-parse test
     g2 = Graph().parse(data=s)  # turtle
     assert len(g2) == len(g)
+
+
+@pytest.mark.parametrize(
+    "turtle_data,literal",
+    [
+        (
+            b'<http://example.com/subject> <http://example.com/predicate> """l0\r\nl1""".',
+            Literal("l0\r\nl1"),
+        )
+    ],
+)
+def test_literal_parsing(turtle_data: bytes, literal: Literal, tmp_path: Path) -> None:
+    g = Graph()
+    logging.info("turtle_data = %s", turtle_data)
+    tmp_file = tmp_path / "file.ttl"
+    tmp_file.write_bytes(turtle_data)
+    g.parse(tmp_file, format="turtle")
+    logging.info("g = %s", g.serialize())
+    EG = Namespace("http://example.com/")
+    objects = list(g.objects(EG.subject, EG.predicate))
+    assert len(objects) == 1
+    object = objects[0]
+    logging.info("object = %s", object)
+    logging.info("literal = %s", literal)
+    assert object == literal
