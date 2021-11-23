@@ -1261,6 +1261,7 @@ class Graph(Node):
             if format is None:
                 format = "turtle"
                 could_not_guess_format = True
+        print(f"format = {format}, source = ", source.__dict__)
         parser = plugin.get(format, Parser)()
         try:
             parser.parse(source, self, **args)  # type: ignore[call-arg]

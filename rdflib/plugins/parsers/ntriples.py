@@ -8,13 +8,14 @@ Author: Sean B. Palmer, inamidst.com
 
 import re
 import codecs
+from rdflib.graph import Graph
 
-from rdflib.term import URIRef as URI
+from rdflib.term import Node, URIRef as URI
 from rdflib.term import BNode as bNode
 from rdflib.term import Literal
 from rdflib.compat import decodeUnicodeEscape
 from rdflib.exceptions import ParserError as ParseError
-from rdflib.parser import Parser
+from rdflib.parser import InputSource, Parser
 
 from io import StringIO, TextIOBase, BytesIO
 
@@ -296,10 +297,10 @@ class W3CNTriplesParser(object):
 class NTGraphSink(object):
     __slots__ = ("g",)
 
-    def __init__(self, graph):
+    def __init__(self, graph: Graph):
         self.g = graph
 
-    def triple(self, s, p, o):
+    def triple(self, s: Node, p, o):
         self.g.add((s, p, o))
 
 
@@ -311,7 +312,7 @@ class NTParser(Parser):
     __slots__ = ()
 
     @classmethod
-    def parse(cls, source, sink, **kwargs):
+    def parse(cls, source: InputSource, sink: Graph, **kwargs):
         """
         Parse the NT format
 

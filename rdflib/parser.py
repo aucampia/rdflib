@@ -26,7 +26,7 @@ from urllib.error import HTTPError
 
 from xml.sax import xmlreader
 
-from rdflib import __version__
+from rdflib import __version__, Graph
 from rdflib.term import URIRef
 from rdflib.namespace import Namespace
 
@@ -45,7 +45,7 @@ class Parser(object):
     def __init__(self):
         pass
 
-    def parse(self, source, sink):
+    def parse(self, source: "InputSource", sink: Graph):
         pass
 
 
