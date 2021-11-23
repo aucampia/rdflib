@@ -16,7 +16,7 @@ import pathlib
 import sys
 
 from io import BytesIO, RawIOBase, TextIOBase, TextIOWrapper, StringIO, BufferedIOBase
-from typing import IO, Any, BinaryIO, Optional, Text, TextIO, Tuple, Union
+from typing import IO, TYPE_CHECKING, Any, BinaryIO, Optional, Text, TextIO, Tuple, Union
 
 from urllib.request import Request
 from urllib.request import url2pathname
@@ -26,9 +26,12 @@ from urllib.error import HTTPError
 
 from xml.sax import xmlreader
 
-from rdflib import __version__, Graph
+from rdflib import __version__
 from rdflib.term import URIRef
 from rdflib.namespace import Namespace
+
+if TYPE_CHECKING:
+    from rdflib import Graph
 
 __all__ = [
     "Parser",
@@ -45,7 +48,7 @@ class Parser(object):
     def __init__(self):
         pass
 
-    def parse(self, source: "InputSource", sink: Graph):
+    def parse(self, source: "InputSource", sink: "Graph"):
         pass
 
 
