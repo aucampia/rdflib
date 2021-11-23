@@ -70,7 +70,7 @@ EXPECTED_FAILURES: Dict[URIRef, str] = {}
 
 if os.name == "nt":
     for test in ["literal_with_LINE_FEED", "turtle-subm-15", "turtle-subm-16"]:
-        EXPECTED_FAILURES[NAMESPACE[test]] = "Issue with nt parser and line endings"
+        EXPECTED_FAILURES[NAMESPACE[test]] = "Issue with nt parser and line endings on windows"
 
 
 @pytest.mark.parametrize(
