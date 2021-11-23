@@ -32,7 +32,7 @@ def turtle(test: RDFTest):
         if test.result:  # eval test
             result_path = file_uri_to_path(test.result, Path)
             res = Graph()
-            with result_path.open("rb") as fh:
+            with result_path.open("r", newline="\n") as fh:
                 res.parse(fh, format="nt")
 
             if verbose:
