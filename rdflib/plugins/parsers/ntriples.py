@@ -8,6 +8,7 @@ Author: Sean B. Palmer, inamidst.com
 
 import re
 import codecs
+from typing import IO, BinaryIO, Optional, Pattern, Text, TextIO, Union
 from rdflib.graph import Graph
 
 from rdflib.term import Node, URIRef as URI
@@ -118,22 +119,27 @@ class W3CNTriplesParser(object):
 
     __slots__ = ("_bnode_ids", "sink", "buffer", "file", "line")
 
-    def __init__(self, sink=None, bnode_context=None):
+    def __init__(
+        self, sink: Optional[Union[DummySink, "NTGraphSink"]] = None, bnode_context=None
+    ):
         if bnode_context is not None:
             self._bnode_ids = bnode_context
         else:
             self._bnode_ids = {}
 
+        self.sink: Union[DummySink, "NTGraphSink"]
         if sink is not None:
             self.sink = sink
         else:
             self.sink = DummySink()
 
-        self.buffer = None
-        self.file = None
-        self.line = ""
+        self.buffer: Optional[str] = None
+        self.file: Optional[Union[TextIO, codecs.StreamReader]] = None
+        self.line: Optional[str] = ""
 
-    def parse(self, f, bnode_context=None):
+    def parse(
+        self, f: Union[TextIO, IO[bytes], codecs.StreamReader], bnode_context=None
+    ):
         """
         Parse f as an N-Triples file.
 
@@ -151,9 +157,9 @@ class W3CNTriplesParser(object):
 
         if not hasattr(f, "encoding") and not hasattr(f, "charbuffer"):
             # someone still using a bytestream here?
-            f = codecs.getreader("utf-8")(f)
+            f = codecs.getreader("utf-8")(f)  # type: ignore[arg-type]
 
-        self.file = f
+        self.file = f  # type: ignore[assignment]
         self.buffer = ""
         while True:
             self.line = self.readline()
@@ -165,10 +171,11 @@ class W3CNTriplesParser(object):
                 raise ParseError("Invalid line: {}".format(self.line))
         return self.sink
 
-    def parsestring(self, s, **kwargs):
+    def parsestring(self, s: Union[bytes, bytearray, str], **kwargs):
         """Parse s as an N-Triples string."""
         if not isinstance(s, (str, bytes, bytearray)):
             raise ParseError("Item to parse must be a string instance.")
+        f: Union[codecs.StreamReader, StringIO]
         if isinstance(s, (bytes, bytearray)):
             f = codecs.getreader("utf-8")(BytesIO(s))
         else:
@@ -217,16 +224,16 @@ class W3CNTriplesParser(object):
             raise ParseError("Trailing garbage: {}".format(self.line))
         self.sink.triple(subject, predicate, object_)
 
-    def peek(self, token):
-        return self.line.startswith(token)
+    def peek(self, token: str):
+        return self.line.startswith(token)  # type: ignore[union-attr]
 
-    def eat(self, pattern):
-        m = pattern.match(self.line)
+    def eat(self, pattern: Pattern[str]):
+        m = pattern.match(self.line)  # type: ignore[arg-type]
         if not m:  # @@ Why can't we get the original pattern?
             # print(dir(pattern))
             # print repr(self.line), type(self.line)
             raise ParseError("Failed to eat %s at %s" % (pattern.pattern, self.line))
-        self.line = self.line[m.end() :]
+        self.line = self.line[m.end() :]  # type: ignore[index]
         return m
 
     def subject(self, bnode_context=None):
@@ -300,7 +307,7 @@ class NTGraphSink(object):
     def __init__(self, graph: Graph):
         self.g = graph
 
-    def triple(self, s: Node, p, o):
+    def triple(self, s: Node, p: Node, o: Node):
         self.g.add((s, p, o))
 
 
@@ -322,13 +329,14 @@ class NTParser(Parser):
         :param sink: where to send parsed triples
         :param kwargs: Additional arguments to pass to `.NTriplesParser.parse`
         """
+        f: Union[TextIO, IO[bytes], codecs.StreamReader]
         f = source.getCharacterStream()
         if not f:
             b = source.getByteStream()
             # TextIOBase includes: StringIO and TextIOWrapper
             if isinstance(b, TextIOBase):
                 # f is not really a ByteStream, but a CharacterStream
-                f = b
+                f = b  # type: ignore[assignment]
             else:
                 # since N-Triples 1.1 files can and should be utf-8 encoded
                 f = codecs.getreader("utf-8")(b)
