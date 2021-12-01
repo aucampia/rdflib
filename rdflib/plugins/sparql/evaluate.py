@@ -17,6 +17,8 @@ also return a dict of list of dicts
 import collections
 import itertools
 import re
+import sys
+import traceback
 from urllib.request import urlopen, Request
 from urllib.parse import urlencode
 import json as j
@@ -88,6 +90,8 @@ def evalBGP(ctx, bgp):
 
 
 def evalExtend(ctx, extend):
+    # print("evaluate.evalExtend: entry ...")
+    # traceback.print_stack(file=sys.stdout)
     # TODO: Deal with dict returned from evalPart from GROUP BY
 
     for c in evalPart(ctx, extend.p):
@@ -345,7 +349,7 @@ def evalServiceQuery(ctx, part):
 
 
 """
-    Build a query string to be used by the service call. 
+    Build a query string to be used by the service call.
     It is supposed to pass in the existing bound solutions.
     Re-adds prefixes if added and sets the base.
     Wraps it in select if needed.
@@ -505,6 +509,8 @@ def evalDistinct(ctx, part):
 
 
 def evalProject(ctx, project):
+    # print(f"evaluate.evalProject: entry: ctx = {ctx!r}, project = {project!r}")
+    # traceback.print_stack(file=sys.stdout)
     res = evalPart(ctx, project.p)
 
     return (row.project(project.PV) for row in res)

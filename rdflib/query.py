@@ -1,9 +1,12 @@
+from logging import log
 import os
 import itertools
 import shutil
 import tempfile
 import warnings
 import types
+import sys
+import traceback
 from typing import IO, TYPE_CHECKING, List, Optional, Union, cast
 
 from io import BytesIO
@@ -127,6 +130,8 @@ class ResultRow(tuple):
         return tuple.__getitem__(self, self.labels[name])
 
     def __getitem__(self, name):
+        # print("ResultRow.__getitem__: entry ...")
+        # traceback.print_stack(file=sys.stdout)
         try:
             return tuple.__getitem__(self, name)
         except TypeError:
@@ -185,6 +190,8 @@ class Result(object):
         return self._bindings
 
     def _set_bindings(self, b):
+        # print("Result._set_bindings: entry ...")
+        # traceback.print_stack(file=sys.stdout)
         if isinstance(b, (types.GeneratorType, itertools.islice)):
             self._genbindings = b
             self._bindings = []
@@ -275,6 +282,8 @@ class Result(object):
         return None
 
     def __len__(self):
+        # print("Result.__len__: entry ...")
+        # traceback.print_stack(file=sys.stdout)
         if self.type == "ASK":
             return 1
         elif self.type == "SELECT":
@@ -289,6 +298,8 @@ class Result(object):
             return len(self) > 0
 
     def __iter__(self):
+        # print("Result.__iter__: entry ...")
+        # traceback.print_stack(file=sys.stdout)
         if self.type in ("CONSTRUCT", "DESCRIBE"):
             for t in self.graph:
                 yield t

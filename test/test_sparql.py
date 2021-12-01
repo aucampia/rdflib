@@ -1,8 +1,17 @@
-from rdflib.plugins.sparql import sparql, prepareQuery
+import logging
+import traceback
+from typing import Any, Type
+from rdflib.plugins.sparql import sparql, prepareQuery, CUSTOM_EVALS
+from rdflib.plugins.sparql.sparql import SPARQLError
 from rdflib import Graph, URIRef, Literal, BNode, ConjunctiveGraph
 from rdflib.namespace import Namespace, RDF, RDFS
 from rdflib.compare import isomorphic
 from rdflib.term import Variable
+from rdflib.plugins.sparql.evaluate import evalExtend, evalPart
+from rdflib.plugins.sparql.evalutils import _eval
+import pytest
+from _pytest._code import ExceptionInfo
+import sys
 
 from .testutils import eq_
 
@@ -245,3 +254,190 @@ def test_txtresult():
     assert len(lines) == 3
     vars_check = [Variable(var.strip()) for var in lines[0].split("|")]
     assert vars_check == vars
+
+
+def test_call_function() -> None:
+    graph = Graph()
+    query_string = """
+    SELECT ?output0 WHERE {
+        BIND(CONCAT("a", " + ", "b") AS ?output0)
+    }
+    """
+    result = graph.query(query_string)
+    assert result.type == "SELECT"
+    rows = list(result)
+    print("rows = ", rows)
+    assert len(rows) == 1
+    assert len(rows[0]) == 1
+    assert rows[0][0] == Literal("a + b")
+
+
+def test_custom_eval() -> None:
+    eg = Namespace("http://example.com/")
+    custom_function_uri = eg["function"]
+    custom_function_result = eg["result"]
+
+    def custom_eval_extended(ctx: Any, extend: Any) -> Any:
+        for c in evalPart(ctx, extend.p):
+            try:
+                if (
+                    hasattr(extend.expr, "iri")
+                    and extend.expr.iri == custom_function_uri
+                ):
+                    evaluation = custom_function_result
+                else:
+                    evaluation = _eval(extend.expr, c.forget(ctx, _except=extend._vars))
+                    if isinstance(evaluation, SPARQLError):
+                        raise evaluation
+
+                yield c.merge({extend.var: evaluation})
+
+            except SPARQLError:
+                yield c
+
+    def custom_eval(ctx: Any, part: Any) -> Any:
+        logging.debug("ctx = %s, part = %s", ctx, part)
+        if part.name == "Extend":
+            return custom_eval_extended(ctx, part)
+        else:
+            raise NotImplementedError()
+
+    global CUSTOM_EVALS
+    try:
+        CUSTOM_EVALS["test_function"] = custom_eval
+        graph = Graph()
+        query_string = """
+        PREFIX eg: <http://example.com/>
+        SELECT ?output0 ?output1 WHERE {
+            BIND(CONCAT("a", " + ", "b") AS ?output0)
+            BIND(eg:function() AS ?output1)
+        }
+        """
+        result = graph.query(query_string)
+        assert result.type == "SELECT"
+        rows = list(result)
+        print("rows = ", rows)
+        assert len(rows) == 1
+        assert len(rows[0]) == 2
+        assert rows[0][0] == Literal("a + b")
+        assert rows[0][1] == custom_function_result
+    finally:
+        del CUSTOM_EVALS["test_function"]
+
+
+@pytest.mark.xfail(
+    reason=(
+        "TODO FIXME: if query result resolution causes an exception,"
+        "a subsequent request to resolve the same query query should also fail."
+    )
+)
+def test_custom_eval_runtime_error() -> None:
+    eg = Namespace("http://example.com/")
+    custom_function_uri = eg["function"]
+
+    def custom_eval_extended(ctx: Any, extend: Any) -> Any:
+        for c in evalPart(ctx, extend.p):
+            try:
+                if (
+                    hasattr(extend.expr, "iri")
+                    and extend.expr.iri == custom_function_uri
+                ):
+                    raise RuntimeError("TEST ERROR")
+                else:
+                    evaluation = _eval(extend.expr, c.forget(ctx, _except=extend._vars))
+                    if isinstance(evaluation, SPARQLError):
+                        raise evaluation
+
+                yield c.merge({extend.var: evaluation})
+
+            except SPARQLError:
+                yield c
+
+    def custom_eval(ctx: Any, part: Any) -> Any:
+        logging.debug("ctx = %s, part = %s", ctx, part)
+        if part.name == "Extend":
+            return custom_eval_extended(ctx, part)
+        else:
+            raise NotImplementedError()
+
+    global CUSTOM_EVALS
+    try:
+        CUSTOM_EVALS["test_function"] = custom_eval
+        graph = Graph()
+        query_string = """
+        PREFIX eg: <http://example.com/>
+        SELECT ?output0 ?output1 WHERE {
+            BIND(CONCAT("a", " + ", "b") AS ?output0)
+            BIND(eg:function() AS ?output1)
+        }
+        """
+        excinfo: ExceptionInfo
+        result = graph.query(query_string)
+        with pytest.raises(RuntimeError) as excinfo:
+            list(result)
+
+        ex = excinfo.value
+        tb_lines = [
+            line.rstrip("\n")
+            for line in traceback.format_exception(ex.__class__, ex, ex.__traceback__)
+        ]
+        logging.debug("traceback = %s", "\n".join(tb_lines))
+        assert str(ex) == "TEST ERROR"
+        with pytest.raises(Exception) as excinfo:
+            list(result)
+    finally:
+        del CUSTOM_EVALS["test_function"]
+
+
+# @pytest.mark.xfail(reason="TODO FIXME: TypeErrors are not propagated")
+def test_custom_eval_type_error() -> None:
+    eg = Namespace("http://example.com/")
+    custom_function_uri = eg["function"]
+
+    def custom_eval_extended(ctx: Any, extend: Any) -> Any:
+        for c in evalPart(ctx, extend.p):
+            try:
+                if (
+                    hasattr(extend.expr, "iri")
+                    and extend.expr.iri == custom_function_uri
+                ):
+                    print("will throw typee")
+                    traceback.print_stack(file=sys.stdout)
+                    raise TypeError("TEST ERROR")
+                else:
+                    evaluation = _eval(extend.expr, c.forget(ctx, _except=extend._vars))
+                    if isinstance(evaluation, SPARQLError):
+                        raise evaluation
+
+                yield c.merge({extend.var: evaluation})
+
+            except SPARQLError:
+                yield c
+
+    def custom_eval(ctx: Any, part: Any) -> Any:
+        logging.debug("ctx = %s, part = %s", ctx, part)
+        if part.name == "Extend":
+            return custom_eval_extended(ctx, part)
+        else:
+            raise NotImplementedError()
+
+    global CUSTOM_EVALS
+    try:
+        CUSTOM_EVALS["test_function"] = custom_eval
+        graph = Graph()
+        query_string = """
+        PREFIX eg: <http://example.com/>
+        SELECT ?output0 ?output1 WHERE {
+            BIND(CONCAT("a", " + ", "b") AS ?output0)
+            BIND(eg:function() AS ?output1)
+        }
+        """
+        excinfo: ExceptionInfo
+        result = graph.query(query_string)
+        list(result)
+        # result = graph.query(query_string)
+        # with pytest.raises(TypeError) as excinfo:
+        #     list(result)
+        # assert str(excinfo.value) == "TEST ERROR"
+    finally:
+        del CUSTOM_EVALS["test_function"]
