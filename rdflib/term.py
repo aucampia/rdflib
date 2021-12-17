@@ -87,7 +87,7 @@ def _is_valid_uri(uri):
 _lang_tag_regex = compile("^[a-zA-Z]+(?:-[a-zA-Z0-9]+)*$")
 
 
-def _is_valid_langtag(tag: str):
+def _is_valid_langtag(tag: str) -> bool:
     return bool(_lang_tag_regex.match(tag))
 
 
