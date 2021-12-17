@@ -120,51 +120,51 @@ def test_dateTime_duration_subs():
         )
     )
 
-    assert result1._bindings == []
-    assert isinstance(result1._genbindings, GeneratorType)
-    # assert inspect.isgeneratorfunction(result1._genbindings), ""
-    # assert type(result1._genbindings) == generator
-    # # assert result1._genbindings == []
+    # assert result1._bindings == []
+    # assert isinstance(result1._genbindings, GeneratorType)
+    # # assert inspect.isgeneratorfunction(result1._genbindings), ""
+    # # assert type(result1._genbindings) == generator
+    # # # assert result1._genbindings == []
 
-    print("before first check: ...")
-
-    # assert len(result1) > 0
-
-    # # len(result1._genbindings)
-    # list(result1._genbindings)
-
-    # return
-
-    # # assert len(result1.bindings) > 0
-
-    print("first check: ... result1._genbindings = ", result1._genbindings)
-    with pytest.raises(TypeError):
-        z = list(result1._genbindings)
-        print("z = ", z)
-    #     # len(result1.bindings)
-
-    assert result1._bindings == []
-    assert isinstance(result1._genbindings, GeneratorType)
-
-    print("second check: ... result1._genbindings = ", result1._genbindings)
-    with pytest.raises(TypeError):
-        z = list(result1._genbindings)
-        print("z = ", z)
-    #     # len(result1.bindings)
+    # print("before first check: ...")
 
     # # assert len(result1) > 0
 
-    # # with pytest.raises(TypeError):
-    # #     len(result1)
-    # # with pytest.raises(TypeError):
-    # #     len(result1)
+    # # # len(result1._genbindings)
+    # # list(result1._genbindings)
 
-    # # result1l = list(result1)
-    # # assert len(result1l) > 0
+    # # return
 
-    # list(result1)[0][0]
+    # # # assert len(result1.bindings) > 0
 
-    return
+    # print("first check: ... result1._genbindings = ", result1._genbindings)
+    # with pytest.raises(TypeError):
+    #     z = list(result1._genbindings)
+    #     print("z = ", z)
+    # #     # len(result1.bindings)
+
+    # assert result1._bindings == []
+    # assert isinstance(result1._genbindings, GeneratorType)
+
+    # print("second check: ... result1._genbindings = ", result1._genbindings)
+    # with pytest.raises(TypeError):
+    #     z = list(result1._genbindings)
+    #     print("z = ", z)
+    # #     # len(result1.bindings)
+
+    # # # assert len(result1) > 0
+
+    # # # with pytest.raises(TypeError):
+    # # #     len(result1)
+    # # # with pytest.raises(TypeError):
+    # # #     len(result1)
+
+    # # # result1l = list(result1)
+    # # # assert len(result1l) > 0
+
+    # # list(result1)[0][0]
+
+    # return
 
     eq_(list(result1)[0][0], expected[0])
     eq_(list(result1)[1][0], expected[1])
