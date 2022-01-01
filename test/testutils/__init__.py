@@ -45,6 +45,8 @@ from nturl2path import url2pathname as nt_url2pathname
 if TYPE_CHECKING:
     import typing_extensions as te
 
+import warnings
+
 
 
 def get_random_ip(parts: List[str] = None) -> str:
@@ -73,11 +75,13 @@ Triple = Tuple[Identifier, Identifier, Identifier]
 TripleSet = Set[Triple]
 Quad = Tuple[Identifier, Identifier, Identifier, Identifier]
 QuadSet = Set[Quad]
-# NodeTupleT = TypeVar("NodeTupleT", bound=Tuple[Node, ...])
-# IdentifierTupleT = TypeVar("IdentifierTupleT", bound=Tuple[Identifier, ...])
 
 
 class GraphHelper:
+    """
+    Various functions to assist with graphs.
+    """
+
     @classmethod
     def identifier(self, node: Node) -> Identifier:
         if isinstance(node, Graph):
@@ -111,42 +115,72 @@ class GraphHelper:
             result.append(cls.triple_set(graph, exclude_blanks))
         return result
 
-    @classmethod
-    def equals(cls, lhs: Graph, rhs: Graph, exclude_blanks: bool = False) -> bool:
-        return cls.triple_set(lhs, exclude_blanks) == cls.triple_set(
-            rhs, exclude_blanks
-        )
+    # @classmethod
+    # def equals(cls, lhs: Graph, rhs: Graph, exclude_blanks: bool = False) -> bool:
+    #     return cls.triple_set(lhs, exclude_blanks) == cls.triple_set(
+    #         rhs, exclude_blanks
+    #     )
+
+    # @classmethod
+    # def quad_set(cls, graph: ConjunctiveGraph, exclude_blanks: bool = False) -> QuadSet:
+    #     result = set()
+    #     for sn, pn, on, gn in graph.quads((None, None, None, None)):
+    #         s, p, o, g = cls.identifiers((sn, pn, on, gn))
+    #         logging.debug("quad = %s", (s, p, o, g))
+    #         if exclude_blanks and (
+    #             isinstance(s, BNode) or isinstance(o, BNode) or isinstance(g, BNode)
+    #         ):
+    #             continue
+    #         result.add((s, p, o, g))
+    #     return result
+
+    # @classmethod
+    # def triple_or_quad_set(
+    #     cls, graph: Graph, exclude_blanks: bool = False
+    # ) -> Union[QuadSet, TripleSet]:
+    #     if isinstance(graph, ConjunctiveGraph):
+    #         return cls.quad_set(graph, exclude_blanks)
+    #     return cls.triple_set(graph, exclude_blanks)
 
     @classmethod
-    def quad_set(cls, graph: ConjunctiveGraph, exclude_blanks: bool = False) -> QuadSet:
-        result = set()
-        for sn, pn, on, gn in graph.quads((None, None, None, None)):
-            s, p, o, g = cls.identifiers((sn, pn, on, gn))
-            logging.debug("quad = %s", (s, p, o, g))
-            if exclude_blanks and (
-                isinstance(s, BNode)
-                or isinstance(o, BNode)
-                or isinstance(g, BNode)
-            ):
-                continue
-            result.add((s, p, o, g))
-        return result
-
-    @classmethod
-    def triple_or_quad_set(
-        cls, graph: Graph, exclude_blanks: bool = False
-    ) -> Union[QuadSet, TripleSet]:
-        if isinstance(graph, ConjunctiveGraph):
-            return cls.quad_set(graph, exclude_blanks)
-        return cls.triple_set(graph, exclude_blanks)
-
-    @classmethod
-    def assert_equals(
+    def assert_triples_equal(
         cls, lhs: Graph, rhs: Graph, exclude_blanks: bool = False
     ) -> None:
+        """
+        While this function is functionally equivalent to assert
+        lhs.isomorphic(rhs), it is written in a way that will make pytest
+        report the sets so it is easier to inspect what is missing if the
+        assert fails.
+        """
         lhs_set = cls.triple_set(lhs, exclude_blanks)
         rhs_set = cls.triple_set(rhs, exclude_blanks)
+        logging.debug("lhs_set = %s", lhs_set)
+        logging.debug("rhs_set = %s", rhs_set)
+        if (
+            exclude_blanks
+            and (len(lhs_set) == len(rhs_set) == 0)
+            and len(cls.triple_set(lhs)) != 0
+        ):
+            warnings.warn(
+                "assert_quads_equal on graph that has a blank node in each triple"
+            )
         assert lhs_set == rhs_set
+
+    # @classmethod
+    # def assert_quads_equal(
+    #     cls,
+    #     lhs: ConjunctiveGraph,
+    #     rhs: ConjunctiveGraph,
+    #     exclude_blanks: bool = False,
+    #     warn_empty: bool = False,
+    # ) -> None:
+    #     lhs_set = cls.quad_set(lhs, exclude_blanks)
+    #     rhs_set = cls.quad_set(rhs, exclude_blanks)
+    #     logging.debug("lhs_set = %s", lhs_set)
+    #     logging.debug("rhs_set = %s", rhs_set)
+    #     if warn_empty and (len(lhs_set) == len(rhs_set) == 0):
+    #         warnings.warn("assert_quads_equal on empty sets")
+    #     assert lhs_set == rhs_set
 
 
 GenericT = TypeVar("GenericT", bound=Any)

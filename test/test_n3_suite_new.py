@@ -106,76 +106,75 @@ DATA_DIR = Path(__file__).parent / "n3"
 #         )
 
 
-def parse_roundtrip(
+def check_parse_roundtrip(
     graph_factory: Callable[[], Graph],
     source: Path,
     format: Optional[str],
+    tmp_path: Path,
     roundtrip: bool = True,
-) -> Tuple[Graph, Set[Tuple[Node, Node, Node]]]:
+) -> Graph:
     """
-    parses the source, serializes it and reparses it, then asserts that the
-    result from the first parse is isomorphic with the result from the second
+    Parse the source, serializes it and reparse it, then asserts that the
+    result from the first parse is equalt to the result from the second
     parse.
     """
     graph = graph_factory()
     source_text = source.read_text()
+    _, source_ext = os.path.splitext(source)
     if format is None:
         format = guess_format(source)
     assert format is not None, "could not determine format for {source}"
     logging.debug("source_text = %s", source_text)
-    graph.parse(data=source_text, format=format)
-    graph_ts = GraphHelper.triple_set(graph, exclude_blanks=True)
+    # graph.parse(data=source_text, format=format)
+    graph.parse(source=source, format=format)
+    # graph_ts = GraphHelper.triple_set(graph, exclude_blanks=True)
     # graph_ts = GraphHelper.triple_or_quad_set(graph)
     if roundtrip:
+        reconstitued_path = tmp_path / f"reconstitued.{source_ext}"
+        graph.serialize(destination=reconstitued_path, format=format)
+        reconstitued_text = reconstitued_path.read_text()
         reconstitued_text = graph.serialize(format=format)
         logging.debug("reconstitued_text = %s", reconstitued_text)
         reconstitued_graph = graph_factory()
         logging.debug("reconstitued_graph = %s", reconstitued_graph)
-        reconstitued_graph.parse(data=reconstitued_text, format=format)
-        # GraphHelper.assert_equals(graph, reconstitued_graph, exclude_blanks=True)
-        reconstitued_graph_ts = GraphHelper.triple_set(reconstitued_graph, exclude_blanks=True)
-        # reconstitued_graph_ts = GraphHelper.triple_or_quad_set(
-        #     reconstitued_graph,
-        # )
-        # assert graph_ts == reconstitued_graph_ts
-        # crapCompare(graph, reconstitued_graph)
-        # assert graph.isomorphic(reconstitued_graph)
-        GraphHelper.assert_equals(graph, reconstitued_graph, exclude_blanks=False)
-        # assert_isomorphic(graph, reconstitued_graph, format)
-    # assert graph.isomorphic(reconstitued_graph), (
-    #     "graph\n"
-    #     f"{graph.serialize('n3')}\n"
-    #     "must be isomorphic to\n"
-    #     f"{reconstitued_graph.serialize('n3')}"
-    # )
-    return graph, graph_ts
+        reconstitued_graph.parse(source=reconstitued_path, format=format)
+
+        GraphHelper.assert_triples_equal(
+            graph,
+            reconstitued_graph,
+            exclude_blanks=True,
+        )
+    return graph
 
 
 def check_variant_file(
     variant_file: MultiVariantFile,
+    tmp_path: Path,
     expected_extentions: Optional[Set[str]] = None,
     roundtrip: bool = True,
 ) -> None:
-    default_graph_id = URIRef(f"urn:fdc:example.com:{variant_file.stem}")
+    # default_graph_id = URIRef(f"urn:fdc:example.com:{variant_file.stem}")
     if expected_extentions is not None:
         found_extentions = {
             os.path.splitext(variant)[0] for variant in variant_file.variants
         }
         assert expected_extentions == found_extentions
-    first: Optional[Tuple[Graph, Set[Tuple[Node, Node, Node]]]] = None
+    # first: Optional[Tuple[Graph, Set[Tuple[Node, Node, Node]]]] = None
+    first_graph: Optional[Graph] = None
     for variant in variant_file.variants:
-        graph, graph_ts = parse_roundtrip(
-            lambda: ConjunctiveGraph(identifier=default_graph_id),
+        graph = check_parse_roundtrip(
+            ConjunctiveGraph,
             variant,
             None,
+            tmp_path,
             roundtrip=roundtrip,
         )
-        if first is None:
-            first = (graph, graph_ts)
+        if first_graph is None:
+            first_graph = graph
             # first_graph_ts = GraphHelper.triple_set(graph, exclude_blanks=True)
         else:
-            # GraphHelper.assert_equals(first[0], graph, exclude_blanks=True)
-            assert first[1] == graph_ts
+            GraphHelper.assert_triples_equal(first_graph, graph, exclude_blanks=True)
+            # assert first[1] == graph_ts
             # # reconstitued_graph_ts = GraphHelper.triple_set(reconstitued_graph, exclude_blanks=True)
 
 
@@ -188,12 +187,12 @@ def check_variant_file(
     # [case.pytest_param for case in make_test_cases()],
     # [pytest.param(,v id=variant_file.stem) for variant_file in MultiVariantFile.for_directory(DATA_DIR) ],
 )
-def test_variant_file(variant_file: MultiVariantFile) -> None:
+def test_variant_file(variant_file: MultiVariantFile, tmp_path: Path) -> None:
     # for variant in variant_file.variants:
     #     format = guess_format(variant)
     #     assert format is not None, "could not determine format for {variant}"
     #     check_serialize_parse(variant, format, "n3")
-    check_variant_file(variant_file)
+    check_variant_file(variant_file, tmp_path)
 
 
 # def test_n3_writing(case: TestCase):
