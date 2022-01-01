@@ -71,10 +71,10 @@ def ctx_http_server(
     server_thread.join()
 
 
-Triple = Tuple[Identifier, Identifier, Identifier]
-TripleSet = Set[Triple]
-Quad = Tuple[Identifier, Identifier, Identifier, Identifier]
-QuadSet = Set[Quad]
+IdentifierTriple = Tuple[Identifier, Identifier, Identifier]
+IdentifierTripleSet = Set[IdentifierTriple]
+IdentifierQuad = Tuple[Identifier, Identifier, Identifier, Identifier]
+IdentifierQuadSet = Set[IdentifierQuad]
 
 
 class GraphHelper:
@@ -97,7 +97,7 @@ class GraphHelper:
         return tuple(result)
 
     @classmethod
-    def triple_set(cls, graph: Graph, exclude_blanks: bool = False) -> TripleSet:
+    def triple_set(cls, graph: Graph, exclude_blanks: bool = False) -> IdentifierTripleSet:
         result = set()
         for sn, pn, on in graph.triples((None, None, None)):
             s, p, o = cls.identifiers((sn, pn, on))
@@ -109,38 +109,11 @@ class GraphHelper:
     @classmethod
     def triple_sets(
         cls, graphs: Iterable[Graph], exclude_blanks: bool = False
-    ) -> List[TripleSet]:
-        result: List[TripleSet] = []
+    ) -> List[IdentifierTripleSet]:
+        result: List[IdentifierTripleSet] = []
         for graph in graphs:
             result.append(cls.triple_set(graph, exclude_blanks))
         return result
-
-    # @classmethod
-    # def equals(cls, lhs: Graph, rhs: Graph, exclude_blanks: bool = False) -> bool:
-    #     return cls.triple_set(lhs, exclude_blanks) == cls.triple_set(
-    #         rhs, exclude_blanks
-    #     )
-
-    # @classmethod
-    # def quad_set(cls, graph: ConjunctiveGraph, exclude_blanks: bool = False) -> QuadSet:
-    #     result = set()
-    #     for sn, pn, on, gn in graph.quads((None, None, None, None)):
-    #         s, p, o, g = cls.identifiers((sn, pn, on, gn))
-    #         logging.debug("quad = %s", (s, p, o, g))
-    #         if exclude_blanks and (
-    #             isinstance(s, BNode) or isinstance(o, BNode) or isinstance(g, BNode)
-    #         ):
-    #             continue
-    #         result.add((s, p, o, g))
-    #     return result
-
-    # @classmethod
-    # def triple_or_quad_set(
-    #     cls, graph: Graph, exclude_blanks: bool = False
-    # ) -> Union[QuadSet, TripleSet]:
-    #     if isinstance(graph, ConjunctiveGraph):
-    #         return cls.quad_set(graph, exclude_blanks)
-    #     return cls.triple_set(graph, exclude_blanks)
 
     @classmethod
     def assert_triples_equal(
@@ -162,25 +135,11 @@ class GraphHelper:
             and len(cls.triple_set(lhs)) != 0
         ):
             warnings.warn(
-                "assert_quads_equal on graph that has a blank node in each triple"
+                f"assert_quads_equal with exclude_blanks={exclude_blanks} "
+                "on graph that has a blank node in each triple"
             )
         assert lhs_set == rhs_set
 
-    # @classmethod
-    # def assert_quads_equal(
-    #     cls,
-    #     lhs: ConjunctiveGraph,
-    #     rhs: ConjunctiveGraph,
-    #     exclude_blanks: bool = False,
-    #     warn_empty: bool = False,
-    # ) -> None:
-    #     lhs_set = cls.quad_set(lhs, exclude_blanks)
-    #     rhs_set = cls.quad_set(rhs, exclude_blanks)
-    #     logging.debug("lhs_set = %s", lhs_set)
-    #     logging.debug("rhs_set = %s", rhs_set)
-    #     if warn_empty and (len(lhs_set) == len(rhs_set) == 0):
-    #         warnings.warn("assert_quads_equal on empty sets")
-    #     assert lhs_set == rhs_set
 
 
 GenericT = TypeVar("GenericT", bound=Any)

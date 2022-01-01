@@ -14,96 +14,114 @@ The test suite does the following:
   the graphs obtained by parsing each file is the same.
 """
 
-from dataclasses import dataclass, field
 import logging
+import os.path
+from dataclasses import dataclass
 from pathlib import Path
+from test.testutils import GraphHelper
 from typing import (
     Callable,
     Collection,
-    Iterator,
+    Dict,
+    Iterable,
     List,
+    MutableSet,
     Optional,
     Set,
     Tuple,
-    Type,
     Union,
     cast,
 )
-from _pytest.mark.structures import Mark, MarkDecorator, ParameterSet
 
 import pytest
+from _pytest.mark.structures import Mark, MarkDecorator, ParameterSet
+
 from rdflib.graph import ConjunctiveGraph, Graph
-from rdflib.term import Node, URIRef
-from rdflib.util import guess_format
-from test.testutils import GraphHelper, check_serialize_parse, crapCompare
-
-# from test.testutils.graph import assert_isomorphic
-import os.path
-
-# from .testutils import check_serialize_parse
-from .testutils.files import MultiVariantFile
+from rdflib.util import SUFFIX_FORMAT_MAP, guess_format
 
 DATA_DIR = Path(__file__).parent / "n3"
 
-# def _get_test_files_formats():
-#     skiptests = []
-#     for f in os.listdir("test/n3"):
-#         if f not in skiptests:
-#             fpath = "test/n3/" + f
-#             if f.endswith(".rdf"):
-#                 yield fpath, "xml"
-#             elif f.endswith(".n3"):
-#                 yield fpath, "n3"
+
+@dataclass(order=True)
+class MultiVariantFile:
+    """
+    Represents a file with multiple variants in different formats.
+    """
+
+    directory: Path
+    stem: str
+    variants: MutableSet[Path]
+
+    def pytest_param(
+        self,
+        marks: Optional[
+            Union[MarkDecorator, Collection[Union[MarkDecorator, Mark]]]
+        ] = None,
+    ) -> ParameterSet:
+        if marks is None:
+            marks = cast(Tuple[MarkDecorator], tuple())
+        return pytest.param(self, id=self.stem, marks=marks)
+
+    @classmethod
+    def from_path(cls, file: Path) -> "MultiVariantFile":
+        stem, extension = os.path.splitext(file.name)
+        return MultiVariantFile(file.parent, stem, {file})
+
+    @classmethod
+    def for_directory(cls, directory: Path) -> Iterable["MultiVariantFile"]:
+        files: Dict[str, MultiVariantFile] = {}
+        for file_path in directory.glob("**/*"):
+            if not file_path.is_file():
+                continue
+            file_key, _ = os.path.splitext(file_path.relative_to(directory))
+            logging.error("file_key = %s", file_key)
+            if file_key not in files:
+                file = files[file_key] = MultiVariantFile.from_path(file_path)
+            else:
+                file = files[file_key]
+                file.variants.add(file_path)
+        return files.values()
 
 
-# def all_n3_files():
-#     skiptests = [
-#         "test/n3/example-lots_of_graphs.n3",  # only n3 can serialize QuotedGraph, no point in testing roundtrip
-#     ]
-#     for fpath, fmt in _get_test_files_formats():
-#         if fpath in skiptests:
-#             log.debug("Skipping %s, known issue" % fpath)
-#         else:
-#             yield fpath, fmt
-
-# extention_to_format = {"rdf": "application/rdf+xml"}
-
-
-# @dataclass
-# class TestCase:
-#     variant_file: MultiVariantFile
-#     roundtrip: bool
-#     marks: Union[MarkDecorator, Collection[Union[MarkDecorator, Mark]]] = field(
-#         default_factory=lambda: cast(Tuple[MarkDecorator], tuple())
-#     )
-
-#     def __post_init__(self) -> None:
-#         n3_file: Optional[Path] = None
-#         self.other_files: List[Path] = []
-#         for variant in self.variant_file.variants:
-#             if variant.name.endswith(".n3"):
-#                 n3_file = variant
-#             else:
-#                 self.other_files.append(variant)
-
-#         if n3_file is None:
-#             raise ValueError(
-#                 f"Need at least one n3 file and none found for {self.variant_file}"
-#             )
-
-#         self.n3_file = n3_file
-
-#     def pytest_param(self) -> ParameterSet:
-#         return pytest.param(self, id=self.variant_file.stem, marks=self.marks)
-
-
-# def make_test_cases() -> Iterator[TestCase]:
-#     skip_roundtrip_stems = {"example-lots_of_graphs"}
-#     for variant_file in MultiVariantFile.for_directory(DATA_DIR):
-#         yield TestCase(
-#             variant_file,
-#             roundtrip=variant_file.stem not in skip_roundtrip_stems,
-#         )
+def test_nested_variants(tmp_path: Path) -> None:
+    """
+    Variants in multiple levels are correctly detected.
+    """
+    directories = [".", "l1-d0", "l1-d1/l2-d0"]
+    stems = ["f0", "f1", "f2"]
+    directory_files = set()
+    directory_variant_files: List[MultiVariantFile] = []
+    for index, stem in enumerate(stems):
+        variants = {Path(f"{stem}.{ext}") for ext in range(index + 1)}
+        directory_files.update(variants)
+        directory_variant_files.append(
+            MultiVariantFile(Path("/placeholder"), stem, variants)
+        )
+    file_paths: List[Path] = []
+    expected_variant_files = []
+    for directory in directories:
+        resolved_directory = tmp_path / directory
+        extra_file_paths = [
+            resolved_directory / directory_file for directory_file in directory_files
+        ]
+        file_paths.extend(extra_file_paths)
+        extra_variant_files = [
+            MultiVariantFile(
+                resolved_directory,
+                item.stem,
+                {resolved_directory / variant.name for variant in item.variants},
+            )
+            for item in directory_variant_files
+        ]
+        expected_variant_files.extend(extra_variant_files)
+    for file_path in file_paths:
+        file_path.parent.mkdir(exist_ok=True, parents=True)
+        file_path.write_text("blank")
+    actual_variant_files = list(MultiVariantFile.for_directory(tmp_path))
+    assert len(actual_variant_files) == (len(directories) * 3)
+    expected_variant_files.sort()
+    actual_variant_files.sort()
+    assert expected_variant_files == actual_variant_files
 
 
 def check_parse_roundtrip(
@@ -120,24 +138,22 @@ def check_parse_roundtrip(
     """
     graph = graph_factory()
     source_text = source.read_text()
-    _, source_ext = os.path.splitext(source)
+    # _, source_ext = os.path.splitext(source)
     if format is None:
         format = guess_format(source)
     assert format is not None, "could not determine format for {source}"
     logging.debug("source_text = %s", source_text)
-    # graph.parse(data=source_text, format=format)
     graph.parse(source=source, format=format)
-    # graph_ts = GraphHelper.triple_set(graph, exclude_blanks=True)
-    # graph_ts = GraphHelper.triple_or_quad_set(graph)
     if roundtrip:
-        reconstitued_path = tmp_path / f"reconstitued.{source_ext}"
-        graph.serialize(destination=reconstitued_path, format=format)
-        reconstitued_text = reconstitued_path.read_text()
+        # reconstitued_path = tmp_path / f"reconstitued.{source_ext}"
+        # graph.serialize(destination=reconstitued_path, format=format)
+        # reconstitued_text = reconstitued_path.read_text()
         reconstitued_text = graph.serialize(format=format)
         logging.debug("reconstitued_text = %s", reconstitued_text)
         reconstitued_graph = graph_factory()
         logging.debug("reconstitued_graph = %s", reconstitued_graph)
-        reconstitued_graph.parse(source=reconstitued_path, format=format)
+        # reconstitued_graph.parse(source=reconstitued_path, format=format)
+        reconstitued_graph.parse(data=reconstitued_text, format=format)
 
         GraphHelper.assert_triples_equal(
             graph,
@@ -153,13 +169,13 @@ def check_variant_file(
     expected_extentions: Optional[Set[str]] = None,
     roundtrip: bool = True,
 ) -> None:
-    # default_graph_id = URIRef(f"urn:fdc:example.com:{variant_file.stem}")
+    assert len(variant_file.variants) > 0
     if expected_extentions is not None:
         found_extentions = {
-            os.path.splitext(variant)[0] for variant in variant_file.variants
+            os.path.splitext(variant)[1] for variant in variant_file.variants
         }
-        assert expected_extentions == found_extentions
-    # first: Optional[Tuple[Graph, Set[Tuple[Node, Node, Node]]]] = None
+        assert expected_extentions.issubset(found_extentions)
+        # assert expected_extentions == found_extentions
     first_graph: Optional[Graph] = None
     for variant in variant_file.variants:
         graph = check_parse_roundtrip(
@@ -171,57 +187,44 @@ def check_variant_file(
         )
         if first_graph is None:
             first_graph = graph
-            # first_graph_ts = GraphHelper.triple_set(graph, exclude_blanks=True)
         else:
             GraphHelper.assert_triples_equal(first_graph, graph, exclude_blanks=True)
-            # assert first[1] == graph_ts
-            # # reconstitued_graph_ts = GraphHelper.triple_set(reconstitued_graph, exclude_blanks=True)
+
+
+variant_files = list(MultiVariantFile.for_directory(DATA_DIR))
+
+
+# def all_n3_files() -> Iterable[Tuple[str, str]]:
+#     skip = {"example-lots_of_graphs.n3"}
+#     for variant_file in variant_files:
+#         for variant in variant_file.variants:
+#             if variant.name in skip:
+#                 continue
+#             stem, ext = os.path.splitext(variant)
+#             yield f"{variant}", SUFFIX_FORMAT_MAP[ext[1:]]
+#         # n3_variant = next(
+#         #     variant for variant in variant_file.variants if variant.name.endswith(".n3")
+#         # )
+#         # assert n3_variant is not None
+#         # yield f"{n3_variant}", "n
+#     # skiptests = [
+#     #     "test/n3/example-lots_of_graphs.n3",  # only n3 can serialize QuotedGraph, no point in testing roundtrip
+#     # ]
+#     # for fpath, fmt in _get_test_files_formats():
+#     #     if fpath in skiptests:
+#     #         log.debug("Skipping %s, known issue" % fpath)
+#     #     else:
+#     #         yield fpath, fmt
+
+
+def test_all_tested() -> None:
+    assert len(variant_files) > 1
+    assert len(variant_files) == len(list(DATA_DIR.glob("*.n3")))
 
 
 @pytest.mark.parametrize(
     "variant_file",
-    [
-        variant_file.pytest_param()
-        for variant_file in MultiVariantFile.for_directory(DATA_DIR)
-    ]
-    # [case.pytest_param for case in make_test_cases()],
-    # [pytest.param(,v id=variant_file.stem) for variant_file in MultiVariantFile.for_directory(DATA_DIR) ],
+    [variant_file.pytest_param() for variant_file in variant_files],
 )
 def test_variant_file(variant_file: MultiVariantFile, tmp_path: Path) -> None:
-    # for variant in variant_file.variants:
-    #     format = guess_format(variant)
-    #     assert format is not None, "could not determine format for {variant}"
-    #     check_serialize_parse(variant, format, "n3")
-    check_variant_file(variant_file, tmp_path)
-
-
-# def test_n3_writing(case: TestCase):
-#     graph = parse_file(case.n3_file, "n3", case.roundtrip)
-
-#     for variant in case.other_files:
-#         variant_graph = parse_file(variant, None, case.roundtrip)
-#         assert graph.isomorphic(variant_graph), (
-#             "graph\n"
-#             f"{graph.serialize('n3')}\n"
-#             "must be isomorphic to\n"
-#             f"{variant_graph.serialize('n3')}"
-#         )
-
-#     graph = Graph()
-#     graph.parse(case.n3_file, "n3")
-
-#     if case.roundtrip:
-#         check_serialize_parse(case.n3_file, "n3", "n3")
-
-#     for variant in case.other_files:
-#         format = guess_format(variant)
-#         check_serialize_parse(variant, format, "n3")
-
-#     n3_file = next(
-#         variant
-#         for variant in case.variant_file.variants
-#         if variant.name.endswith(".n3")
-#     )
-
-#     if case.roundtrip()
-#     check_serialize_parse(fpath, fmt, "n3")
+    check_variant_file(variant_file, tmp_path, expected_extentions={".n3"})
