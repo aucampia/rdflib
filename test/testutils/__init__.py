@@ -1,4 +1,5 @@
 from __future__ import print_function
+import logging
 
 import os
 import sys
@@ -12,6 +13,7 @@ from typing import (
     Callable,
     Iterable,
     List,
+    NoReturn,
     Optional,
     TYPE_CHECKING,
     Type,
@@ -21,6 +23,7 @@ from typing import (
     Dict,
     Any,
     TypeVar,
+    Union,
     cast,
     NamedTuple,
 )
@@ -32,7 +35,7 @@ import email.message
 import unittest
 
 from rdflib import BNode, Graph, ConjunctiveGraph
-from rdflib.term import Node
+from rdflib.term import Identifier, Node
 from unittest.mock import MagicMock, Mock
 from urllib.error import HTTPError
 from urllib.request import urlopen
@@ -41,6 +44,7 @@ from nturl2path import url2pathname as nt_url2pathname
 
 if TYPE_CHECKING:
     import typing_extensions as te
+
 
 
 def get_random_ip(parts: List[str] = None) -> str:
@@ -65,21 +69,84 @@ def ctx_http_server(
     server_thread.join()
 
 
+Triple = Tuple[Identifier, Identifier, Identifier]
+TripleSet = Set[Triple]
+Quad = Tuple[Identifier, Identifier, Identifier, Identifier]
+QuadSet = Set[Quad]
+# NodeTupleT = TypeVar("NodeTupleT", bound=Tuple[Node, ...])
+# IdentifierTupleT = TypeVar("IdentifierTupleT", bound=Tuple[Identifier, ...])
+
+
 class GraphHelper:
     @classmethod
-    def triple_set(cls, graph: Graph) -> Set[Tuple[Node, Node, Node]]:
-        return set(graph.triples((None, None, None)))
+    def identifier(self, node: Node) -> Identifier:
+        if isinstance(node, Graph):
+            return node.identifier
+        else:
+            return cast(Identifier, node)
 
     @classmethod
-    def triple_sets(cls, graphs: Iterable[Graph]) -> List[Set[Tuple[Node, Node, Node]]]:
-        result: List[Set[Tuple[Node, Node, Node]]] = []
-        for graph in graphs:
-            result.append(cls.triple_set(graph))
+    def identifiers(cls, nodes: Tuple[Node, ...]) -> Tuple[Identifier, ...]:
+        result = []
+        for node in nodes:
+            result.append(cls.identifier(node))
+        return tuple(result)
+
+    @classmethod
+    def triple_set(cls, graph: Graph, exclude_blanks: bool = False) -> TripleSet:
+        result = set()
+        for sn, pn, on in graph.triples((None, None, None)):
+            s, p, o = cls.identifiers((sn, pn, on))
+            if exclude_blanks and (isinstance(s, BNode) or isinstance(o, BNode)):
+                continue
+            result.add((s, p, o))
         return result
 
     @classmethod
-    def equals(cls, lhs: Graph, rhs: Graph) -> bool:
-        return cls.triple_set(lhs) == cls.triple_set(rhs)
+    def triple_sets(
+        cls, graphs: Iterable[Graph], exclude_blanks: bool = False
+    ) -> List[TripleSet]:
+        result: List[TripleSet] = []
+        for graph in graphs:
+            result.append(cls.triple_set(graph, exclude_blanks))
+        return result
+
+    @classmethod
+    def equals(cls, lhs: Graph, rhs: Graph, exclude_blanks: bool = False) -> bool:
+        return cls.triple_set(lhs, exclude_blanks) == cls.triple_set(
+            rhs, exclude_blanks
+        )
+
+    @classmethod
+    def quad_set(cls, graph: ConjunctiveGraph, exclude_blanks: bool = False) -> QuadSet:
+        result = set()
+        for sn, pn, on, gn in graph.quads((None, None, None, None)):
+            s, p, o, g = cls.identifiers((sn, pn, on, gn))
+            logging.debug("quad = %s", (s, p, o, g))
+            if exclude_blanks and (
+                isinstance(s, BNode)
+                or isinstance(o, BNode)
+                or isinstance(g, BNode)
+            ):
+                continue
+            result.add((s, p, o, g))
+        return result
+
+    @classmethod
+    def triple_or_quad_set(
+        cls, graph: Graph, exclude_blanks: bool = False
+    ) -> Union[QuadSet, TripleSet]:
+        if isinstance(graph, ConjunctiveGraph):
+            return cls.quad_set(graph, exclude_blanks)
+        return cls.triple_set(graph, exclude_blanks)
+
+    @classmethod
+    def assert_equals(
+        cls, lhs: Graph, rhs: Graph, exclude_blanks: bool = False
+    ) -> None:
+        lhs_set = cls.triple_set(lhs, exclude_blanks)
+        rhs_set = cls.triple_set(rhs, exclude_blanks)
+        assert lhs_set == rhs_set
 
 
 GenericT = TypeVar("GenericT", bound=Any)
