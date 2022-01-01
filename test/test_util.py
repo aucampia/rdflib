@@ -11,10 +11,6 @@ from rdflib.term import Literal
 from rdflib.term import URIRef
 from rdflib import util
 from rdflib import XSD
-from rdflib.exceptions import SubjectTypeError
-from rdflib.exceptions import PredicateTypeError
-from rdflib.exceptions import ObjectTypeError
-from rdflib.exceptions import ContextTypeError
 
 n3source = """\
 @prefix : <http://www.w3.org/2000/10/swap/Primer#>.
@@ -342,54 +338,6 @@ class TestUtilTermConvert(unittest.TestCase):
             with self.subTest(f"{string}"):
                 literal_str = str(util.from_n3(f'"{string}"'))
                 self.assertEqual(literal_str, f"{string}")
-
-
-class TestUtilCheckers(unittest.TestCase):
-    def setUp(self):
-        self.c = URIRef("http://example.com")
-        self.s = BNode("http://example.com")
-        self.p = URIRef("http://example.com/predicates/isa")
-        self.o = Literal("Objectification")
-
-    def test_util_checker_exceptions(self):
-        c = "http://example.com"
-        self.assertRaises(ContextTypeError, util.check_context, c)
-        self.assertRaises(SubjectTypeError, util.check_subject, c)
-        self.assertRaises(PredicateTypeError, util.check_predicate, c)
-        self.assertRaises(ObjectTypeError, util.check_object, c)
-
-    def test_util_check_context(self):
-        res = util.check_context(self.c)
-        self.assertTrue(res == None)
-
-    def test_util_check_subject(self):
-        res = util.check_subject(self.s)
-        self.assertTrue(res == None)
-
-    def test_util_check_predicate(self):
-        res = util.check_predicate(self.p)
-        self.assertTrue(res == None)
-
-    def test_util_check_object(self):
-        res = util.check_object(self.o)
-        self.assertTrue(res == None)
-
-    def test_util_check_statement(self):
-        c = "http://example.com"
-        self.assertRaises(SubjectTypeError, util.check_statement, (c, self.p, self.o))
-        self.assertRaises(PredicateTypeError, util.check_statement, (self.s, c, self.o))
-        self.assertRaises(ObjectTypeError, util.check_statement, (self.s, self.p, c))
-        res = util.check_statement((self.s, self.p, self.o))
-        self.assertTrue(res == None)
-
-    def test_util_check_pattern(self):
-        c = "http://example.com"
-        self.assertRaises(SubjectTypeError, util.check_pattern, (c, self.p, self.o))
-        self.assertRaises(PredicateTypeError, util.check_pattern, (self.s, c, self.o))
-        self.assertRaises(ObjectTypeError, util.check_pattern, (self.s, self.p, c))
-        res = util.check_pattern((self.s, self.p, self.o))
-        self.assertTrue(res == None)
-
 
 if __name__ == "__main__":
     unittest.main()
