@@ -32,20 +32,22 @@ jobs:
             TOXENV: "py38,docs"
           - python-version: "3.9"
             os: ubuntu-latest
-            TOXENV: "flake8"
+            run-flake8: true
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
         uses: actions/setup-python@v2
         with:
           python-version: ${{ matrix.python-version }}
-
       - uses: actions/setup-java@v2
         if: ${{ matrix.extensive-tests }}
         with:
           distribution: "temurin"
           java-version: "17"
-
+      - name: Setup env
+        shell: bash
+        run: |
+          echo "MATRIX_PYTHON_VERSION=${{ matrix.python-version }}" >> ${GITHUB_ENV}
       - name: Get pip cache dir
         id: pip-cache
         shell: bash
@@ -84,6 +86,7 @@ jobs:
               brew install berkeley-db@4
               export BERKELEYDB_DIR=$(brew --prefix berkeley-db@4)
           fi
+
       - name: Validate
         shell: bash
         run: |
@@ -93,6 +96,9 @@ jobs:
             1>&2 echo "Running with fuseki"
             test_harness+="./with-fuseki.sh"
           fi
-          MYPY_COMMAND= tox -e py37 -- flake8 --exit-zero rdflib
+          if [ -n "${{ matrix.run-flake8 }}" ]
+          then
+            MYPY_COMMAND= tox -e py"${MATRIX_PYTHON_VERSION//./}" -- flake8 --exit-zero rdflib
+          fi
           export TOXENV="${{ matrix.TOXENV }}"
           "${test_harness[@]}" python -m tox
