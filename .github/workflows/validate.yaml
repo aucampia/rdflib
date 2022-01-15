@@ -33,6 +33,7 @@ jobs:
           - python-version: "3.9"
             os: ubuntu-latest
             run-flake8: true
+            EXTRA_COMMAND: "flake8 --exit-zero rdflib"
     steps:
       - uses: actions/checkout@v2
       - name: Set up Python ${{ matrix.python-version }}
@@ -96,9 +97,11 @@ jobs:
             1>&2 echo "Running with fuseki"
             test_harness+="./with-fuseki.sh"
           fi
-          if [ -n "${{ matrix.run-flake8 }}" ]
-          then
-            MYPY_COMMAND= tox -e py"${MATRIX_PYTHON_VERSION//./}" -- flake8 --exit-zero rdflib
-          fi
-          export TOXENV="${{ matrix.TOXENV }}"
+          # if [ -n "${{ matrix.run-flake8 }}" ]
+          # then
+          #   MYPY_COMMAND= tox -e py"${MATRIX_PYTHON_VERSION//./}" -- flake8 --exit-zero rdflib
+          # fi
+          # export TOXENV="${{ matrix.TOXENV }}"
           "${test_harness[@]}" python -m tox
+        env:
+            GH_TOX_KEY: ${{ matrix.os }}-${{ matrix.python-version }}
