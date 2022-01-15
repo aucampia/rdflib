@@ -111,7 +111,7 @@ jobs:
           export TOXENV
           export EXTRA_COMMAND="${{ matrix.EXTRA_COMMAND }}"
           env
-          "${test_harness[@]}" python -m tox -vv
+          "${test_harness[@]}" python -m tox
         env:
             GH_TOX_KEY: ${{ matrix.os }}-${{ matrix.python-version }}
             # NOTE: This is not all environments that will run, it is merely
