@@ -18,6 +18,9 @@ jobs:
       fail-fast: false
       matrix:
         python-version: ["3.7", "3.8", "3.9"]
+        # python-version: ["3.7"]
+        # python-version: ["3.8"]
+        # python-version: ["3.9"]
         # python-version: ["3.7", "3.8", "3.9", "3.10"]
         # , "3.8", "3.9", "3.10"
         # , windows-latest
@@ -27,12 +30,13 @@ jobs:
           - python-version: "3.7"
             os: ubuntu-latest
             extensive-tests: true
+            # TOXENV: "py37-extensive"
           - python-version: "3.8"
             os: ubuntu-latest
-            # TOXENV: "py38,docs"
+            TOXENV: "docs"
           - python-version: "3.9"
             os: ubuntu-latest
-            run-flake8: true
+            # run-flake8: true
             EXTRA_COMMAND: "flake8 --exit-zero rdflib"
     steps:
       - uses: actions/checkout@v2
@@ -48,12 +52,13 @@ jobs:
       - name: Setup env
         shell: bash
         run: |
-          echo "MATRIX_PYTHON_VERSION=${{ matrix.python-version }}" >> ${GITHUB_ENV}
+          MATRIX_PYTHON_VERSION=${{ matrix.python-version }}
+          echo "TOX_PYENV=py${MATRIX_PYTHON_VERSION//./}" >> ${GITHUB_ENV}
       - name: Get pip cache dir
         id: pip-cache
         shell: bash
         run: |
-          python -m ensurepip --upgrade
+          python -m ensurepip
           echo "::set-output name=dir::$(pip cache dir)"
       - name: Cache pip
         uses: actions/cache@v2
@@ -73,8 +78,7 @@ jobs:
       - name: Install dependencies
         shell: bash
         run: |
-          python -m pip install --upgrade pip setuptools wheel
-          python -m pip install --upgrade virtualenv "tox<4" tox-gh-actions
+          python -m pip install "tox<4" tox-gh-actions
       - name: Install extra dev dependencies
         if: ${{ matrix.extensive-tests }}
         shell: bash
@@ -90,18 +94,28 @@ jobs:
       - name: Validate
         shell: bash
         run: |
-          env
+          set -x
           test_harness=()
-          if "${{ matrix.extensive-tests || false }}" && [ "${{ matrix.os }}" != "windows-latest" ]
+          if "${{ matrix.extensive-tests || false}}" && [ "${{ matrix.os }}" != "windows-latest" ]
           then
             1>&2 echo "Running with fuseki"
             test_harness+="./with-fuseki.sh"
+            TOX_PYENV_SUFFIX=-extensive
           fi
+          TOXENV="${{ matrix.TOXENV }}"
+          TOXENV="${TOX_PYENV}${TOX_PYENV_SUFFIX}${TOXENV:+,${TOXENV}}"
           # if [ -n "${{ matrix.run-flake8 }}" ]
           # then
           #   MYPY_COMMAND= tox -e py"${MATRIX_PYTHON_VERSION//./}" -- flake8 --exit-zero rdflib
           # fi
-          # export TOXENV="${{ matrix.TOXENV }}"
-          "${test_harness[@]}" python -m tox
+          export TOXENV
+          export EXTRA_COMMAND="${{ matrix.EXTRA_COMMAND }}"
+          env
+          "${test_harness[@]}" python -m tox -vv
         env:
             GH_TOX_KEY: ${{ matrix.os }}-${{ matrix.python-version }}
+            # NOTE: This is not all environments that will run, it is merely
+            # all possible environments that tox-gh-actions can select from.
+            # The actual environments from this list that will run is
+            # determined by tox-gh-actions config in the tox.ini file.
+            # TOXENV: py3{7,8,9,10},py3{7,8,9,10}-extensive,py3{7,8,9,10}-docs
