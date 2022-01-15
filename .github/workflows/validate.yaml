@@ -88,6 +88,6 @@ jobs:
             1>&2 echo "Running with fuseki"
             test_harness+="./with-fuseki.sh"
           fi
-          flake8 --exit-zero rdflib
+          MYPY_COMMAND= tox -e py37 -- flake8 --exit-zero rdflib
           export TOXENV="${{ matrix.TOXENV }}"
           "${test_harness[@]}" python -m tox
