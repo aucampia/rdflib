@@ -112,11 +112,11 @@ pre-commit and pre-commit ci
 ----------------------------
 
 We have `pre-commit <https://pre-commit.com/>`_ configured with `pycln
-<https://github.com/hadialqattan/pycln>`_ which cleans out unused imports,
+<https://github.com/hadialqattan/pycln>`_ for removing unused imports,
 `isort <https://github.com/PyCQA/isort>`_ for sorting imports, and `black
 <https://github.com/psf/black>`_ for formatting out code.
 
-The basics of using pre-commit is:
+Some useful commands for using pre-commit:
 
 .. code-block:: bash
 
@@ -129,6 +129,19 @@ The basics of using pre-commit is:
 
     # Run pre-commit on changed files
     pre-commit run
+
+    # Run pre-commit on all files
+    pre-commit run --all-files
+
+There is also two tox environments for pre-commit:
+
+.. code-block:: bash
+
+    # run tox
+    tox -e precommit
+
+    tox -e precommitall
+
 
 There is no hard requirement for pull requests to be processed with pre-commit (or the underlying processors), however doing this makes for a less noisy codebase with cleaner history.
 
