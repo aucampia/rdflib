@@ -1,10 +1,10 @@
 from io import BytesIO
 import pickle
 from rdflib.events import Dispatcher, Event
-from typing import Tuple, TYPE_CHECKING, Iterable, Optional
+from typing import Iterator, Tuple, TYPE_CHECKING, Iterable, Optional
 
 if TYPE_CHECKING:
-    from rdflib.term import Node
+    from rdflib.term import Node, IdentifiedNode, Identifier
     from rdflib.graph import Graph
 
 """
@@ -291,11 +291,12 @@ class Store(object):
                 for (s1, p1, o1), cg in self.triples((subject, None, object_), context):
                     yield (s1, p1, o1), cg
 
-    def triples(
+    # type error: Missing return statement
+    def triples(  # type: ignore [return]
         self,
         triple_pattern: Tuple[Optional["Node"], Optional["Node"], Optional["Node"]],
         context=None,
-    ):
+    ) -> Iterator[Tuple[Tuple["IdentifiedNode", "IdentifiedNode", "Identifier"], Iterator["Identifier"]]]:
         """
         A generator over all the triples matching the pattern. Pattern can
         include any objects for used for comparing against nodes in the store,

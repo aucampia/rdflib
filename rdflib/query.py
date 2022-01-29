@@ -15,6 +15,7 @@ __all__ = ["Processor", "Result", "ResultParser", "ResultSerializer", "ResultExc
 if TYPE_CHECKING:
     from rdflib.graph import Graph
     from rdflib.term import Variable
+    from rdflib.plugins.sparql.sparql import Query, Update
 
 
 class Processor(object):
@@ -27,10 +28,16 @@ class Processor(object):
 
     """
 
-    def __init__(self, graph):
+    def __init__(self, graph: Graph):
         pass
 
-    def query(self, strOrQuery, initBindings={}, initNs={}, DEBUG=False):
+    def query(
+        self,
+        strOrQuery: Union[str, Query],
+        initBindings: Mapping[Variable, Identifier] = {},
+        initNs: Mapping[str, str] = {},
+        DEBUG: bool = False,
+    ) -> Mapping[str, Any]:
         pass
 
 
@@ -47,10 +54,15 @@ class UpdateProcessor(object):
 
     """
 
-    def __init__(self, graph):
+    def __init__(self, graph: Graph):
         pass
 
-    def update(self, strOrQuery, initBindings={}, initNs={}):
+    def update(
+        self,
+        strOrQuery: Union[str, Update],
+        initBindings: Mapping[Variable, Identifier] = {},
+        initNs: Mapping[str, str] = {},
+    ) -> None:
         pass
 
 
@@ -66,7 +78,7 @@ class EncodeOnlyUnicode(object):
 
     """
 
-    def __init__(self, stream):
+    def __init__(self, stream: BinaryIO):
         self.__stream = stream
 
     def write(self, arg):
@@ -75,7 +87,7 @@ class EncodeOnlyUnicode(object):
         else:
             self.__stream.write(arg)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         return getattr(self.__stream, name)
 
 
@@ -172,10 +184,10 @@ class Result(object):
 
         self.type = type_
         self.vars: Optional[List["Variable"]] = None
-        self._bindings = None
-        self._genbindings = None
-        self.askAnswer: bool = None  # type: ignore[assignment]
-        self.graph: "Graph" = None  # type: ignore[assignment]
+        self._bindings: MutableSequence[Mapping[Variable, Identifier]] = None  # type: ignore[assignment]
+        self._genbindings: Optional[Iterator[Mapping[Variable, Identifier]]] = None
+        self.askAnswer: Optional[bool] = None
+        self.graph: Optional["Graph"] = None
 
     @property
     def bindings(self):
@@ -289,12 +301,16 @@ class Result(object):
         else:
             return len(self) > 0
 
-    def __iter__(self):
+    def __iter__(
+        self,
+    ) -> Iterator[Union[Tuple[Identifier, Identifier, Identifier], bool, ResultRow]]:
         if self.type in ("CONSTRUCT", "DESCRIBE"):
-            for t in self.graph:
+            # type error: Item "None" of "Optional[Graph]" has no attribute "__iter__" (not iterable)
+            for t in self.graph:  # type: ignore[union-attr]
                 yield t
         elif self.type == "ASK":
-            yield self.askAnswer
+            # type error: Incompatible types in "yield" (actual type "Optional[bool]", expected type "Union[Tuple[Identifier, Identifier, Identifier], bool, ResultRow]")  [misc]
+            yield self.askAnswer  # type: ignore[misc]
         elif self.type == "SELECT":
             # this iterates over ResultRows of variable bindings
 
@@ -309,7 +325,7 @@ class Result(object):
                     if b:  # don't add a result row in case of empty binding {}
                         yield ResultRow(b, self.vars)
 
-    def __getattr__(self, name):
+    def __getattr__(self, name: str) -> Any:
         if self.type in ("CONSTRUCT", "DESCRIBE") and self.graph is not None:
             return self.graph.__getattr__(self, name)
         elif self.type == "SELECT" and name == "result":
@@ -324,7 +340,7 @@ class Result(object):
         else:
             raise AttributeError("'%s' object has no attribute '%s'" % (self, name))
 
-    def __eq__(self, other):
+    def __eq__(self, other) -> bool:
         try:
             if self.type != other.type:
                 return False

@@ -313,7 +313,7 @@ def rdflib_to_graphtool(
     True
 
     """
-    import graph_tool as gt
+    import graph_tool as gt  # pytype: disable=import-error
 
     g = gt.Graph()
 

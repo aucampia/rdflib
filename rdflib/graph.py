@@ -1,8 +1,10 @@
 from typing import (
     IO,
+    TYPE_CHECKING,
     Any,
     BinaryIO,
     Iterable,
+    Iterator,
     Optional,
     TextIO,
     Union,
@@ -18,7 +20,7 @@ import random
 from rdflib.namespace import Namespace, RDF
 from rdflib import plugin, exceptions, query, namespace
 import rdflib.term
-from rdflib.term import BNode, Node, URIRef, Literal, Genid
+from rdflib.term import BNode, Identifier, Node, URIRef, Literal, Genid, IdentifiedNode
 from rdflib.paths import Path
 from rdflib.store import Store
 from rdflib.serializer import Serializer
@@ -449,9 +451,21 @@ class Graph(Node):
         self.__store.remove(triple, context=self)
         return self
 
+    @overload
+    def triples(
+        self, triple: Tuple[Optional[Node], Path, Optional[Node]]
+    ) -> Iterator[Tuple[IdentifiedNode, Path, Identifier]]:
+        ...
+
+    @overload
+    def triples(
+        self, triple: Tuple[Optional[Node], Union[None, Node], Optional[Node]]
+    ) -> Iterator[Tuple[IdentifiedNode, IdentifiedNode, Identifier]]:
+        ...
+
     def triples(
         self, triple: Tuple[Optional[Node], Union[None, Path, Node], Optional[Node]]
-    ):
+    ) -> Iterator[Tuple[IdentifiedNode, Union[IdentifiedNode, Path], Identifier]]:
         """Generator over the triple store
 
         Returns triples that match the given triple pattern. If triple pattern
@@ -1104,7 +1118,7 @@ class Graph(Node):
             else:
                 shutil.copy(name, dest)
                 os.remove(name)
-        return self
+        return self  # pytype: disable=bad-return-type
 
     def print(self, format="turtle", encoding="utf-8", out=None):
         print(
@@ -1276,6 +1290,8 @@ class Graph(Node):
 
         if not isinstance(result, query.Result):
             result = plugin.get(cast(str, result), query.Result)
+        if TYPE_CHECKING:
+            assert issubclass(result, query.Result)
         if not isinstance(processor, query.Processor):
             processor = plugin.get(processor, query.Processor)(self)
 
@@ -1313,7 +1329,8 @@ class Graph(Node):
 
     def n3(self):
         """Return an n3 identifier for the Graph"""
-        return "[%s]" % self.identifier.n3()
+        # pytype error: No attribute 'n3' on rdflib.term.Node
+        return "[%s]" % self.identifier.n3()  # pytype: disable=attribute-error
 
     def __reduce__(self):
         return (

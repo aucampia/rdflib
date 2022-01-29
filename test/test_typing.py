@@ -25,6 +25,7 @@ from typing import Set, Tuple, Union
 # TODO Bug - rdflib.plugins.sparql.prepareQuery() will run fine if this
 # test is run, but mypy can't tell the symbol is exposed.
 import rdflib.plugins.sparql.processor
+import rdflib
 
 
 def test_rdflib_query_exercise() -> None:

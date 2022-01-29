@@ -18,14 +18,7 @@ else:
         import xml.etree.ElementTree as etree
 
 
-try:
-    etree_register_namespace = etree.register_namespace
-except AttributeError:
-
-    import xml.etree.ElementTree as etreenative
-
-    def etree_register_namespace(prefix, uri):
-        etreenative._namespace_map[uri] = prefix
+etree_register_namespace = etree.register_namespace
 
 
 def cast_bytes(s, enc="utf-8"):
