@@ -57,7 +57,7 @@ class RDFTest(NamedTuple):
     syntax: bool
 
 
-def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RDFTest]]:
+def read_manifest(f: str, base: Optional[str] = None, legacy: bool = False) -> Iterable[Tuple[Node, URIRef, RDFTest]]:
     def _str(x):
         if x is not None:
             return str(x)
@@ -66,21 +66,21 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
     g = Graph()
     g.parse(f, publicID=base, format="turtle")
 
-    for m in g.subjects(RDF.type, MF.Manifest):
+    for manifest_node in g.subjects(RDF.type, MF.Manifest):
 
-        for col in g.objects(m, MF.include):
+        for col in g.objects(manifest_node, MF.include):
             for i in g.items(col):
                 for x in read_manifest(i):
                     yield x
 
-        for col in g.objects(m, MF.entries):
-            e: URIRef
-            for e in g.items(col):
+        for col in g.objects(manifest_node, MF.entries):
+            test_node: URIRef
+            for test_node in g.items(col):
 
                 approved = (
-                    (e, DAWG.approval, DAWG.Approved) in g
-                    or (e, DAWG.approval, DAWG.NotClassified) in g
-                    or (e, RDFT.approval, RDFT.Approved) in g
+                    (test_node, DAWG.approval, DAWG.Approved) in g
+                    or (test_node, DAWG.approval, DAWG.NotClassified) in g
+                    or (test_node, RDFT.approval, RDFT.Approved) in g
                 )
 
                 # run proposed tests
@@ -88,8 +88,8 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
 
                 # run legacy tests with no approval set
                 if legacy:
-                    approved |= (e, DAWG.approval, None) not in g and (
-                        e,
+                    approved |= (test_node, DAWG.approval, None) not in g and (
+                        test_node,
                         RDFT.approval,
                         None,
                     ) not in g
@@ -97,20 +97,20 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
                 if not approved:
                     continue
 
-                _type = g.value(e, RDF.type)
+                _type = g.value(test_node, RDF.type)
 
                 # if _type in (MF.ServiceDescriptionTest, MF.ProtocolTest):
                 #     continue  # skip tests we do not know
 
-                name = g.value(e, MF.name)
-                comment = g.value(e, RDFS.comment)
+                name = g.value(test_node, MF.name)
+                comment = g.value(test_node, RDFS.comment)
                 data = None
                 graphdata: Optional[GraphDataType] = None
                 res: Optional[ResultType] = None
                 syntax = True
 
                 if _type in (MF.QueryEvaluationTest, MF.CSVResultFormatTest):
-                    a = g.value(e, MF.action)
+                    a = g.value(test_node, MF.action)
                     query = g.value(a, QT.query)
                     data = g.value(a, QT.data)
                     # NOTE: Casting to identifier because g.objects return Node
@@ -118,9 +118,9 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
                     graphdata = list(
                         cast(Iterable[Identifier], g.objects(a, QT.graphData))
                     )
-                    res = g.value(e, MF.result)
+                    res = g.value(test_node, MF.result)
                 elif _type in (MF.UpdateEvaluationTest, UP.UpdateEvaluationTest):
-                    a = g.value(e, MF.action)
+                    a = g.value(test_node, MF.action)
                     query = g.value(a, UP.request)
                     data = g.value(a, UP.data)
                     graphdata = cast(List[Tuple[Identifier, Identifier]], [])
@@ -129,7 +129,7 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
                             (g.value(gd, UP.graph), g.value(gd, RDFS.label))
                         )
 
-                    r = g.value(e, MF.result)
+                    r = g.value(test_node, MF.result)
                     resdata: Identifier = g.value(r, UP.data)
                     resgraphdata: List[Tuple[Identifier, Identifier]] = []
                     for gd in g.objects(r, UP.graphData):
@@ -140,14 +140,14 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
                     res = resdata, resgraphdata
 
                 elif _type in (MF.NegativeSyntaxTest11, MF.PositiveSyntaxTest11):
-                    query = g.value(e, MF.action)
+                    query = g.value(test_node, MF.action)
                     syntax = _type == MF.PositiveSyntaxTest11
 
                 elif _type in (
                     MF.PositiveUpdateSyntaxTest11,
                     MF.NegativeUpdateSyntaxTest11,
                 ):
-                    query = g.value(e, MF.action)
+                    query = g.value(test_node, MF.action)
                     syntax = _type == MF.PositiveUpdateSyntaxTest11
 
                 elif _type in (
@@ -160,7 +160,7 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
                     RDFT.TestTurtlePositiveSyntax,
                     RDFT.TestTurtleNegativeSyntax,
                 ):
-                    query = g.value(e, MF.action)
+                    query = g.value(test_node, MF.action)
                     syntax = _type in (
                         RDFT.TestNQuadsPositiveSyntax,
                         RDFT.TestNTriplesPositiveSyntax,
@@ -174,8 +174,8 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
                     RDFT.TestTrigEval,
                     RDFT.TestTrigNegativeEval,
                 ):
-                    query = g.value(e, MF.action)
-                    res = g.value(e, MF.result)
+                    query = g.value(test_node, MF.action)
+                    res = g.value(test_node, MF.result)
                     syntax = _type in (RDFT.TestTurtleEval, RDFT.TestTrigEval)
 
                 else:
@@ -183,8 +183,8 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
                     print("I dont know DAWG Test Type %s" % _type)
                     continue
 
-                yield e, _type, RDFTest(
-                    e,
+                yield test_node, _type, RDFTest(
+                    test_node,
                     _str(name),
                     _str(comment),
                     _str(data),

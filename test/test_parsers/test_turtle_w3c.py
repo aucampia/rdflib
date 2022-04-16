@@ -67,14 +67,14 @@ testers: Dict[Node, Callable[[RDFTest], None]] = {
     RDFT.TestTurtleNegativeEval: turtle,
 }
 
-NAMESPACE = Namespace("http://www.w3.org/2013/TurtleTests/manifest.ttl#")
-EXPECTED_FAILURES: Dict[URIRef, str] = {}
+# NAMESPACE = Namespace("http://www.w3.org/2013/TurtleTests/manifest.ttl#")
+# EXPECTED_FAILURES: Dict[URIRef, str] = {}
 
-if os.name == "nt":
-    for test in ["literal_with_LINE_FEED", "turtle-subm-15", "turtle-subm-16"]:
-        EXPECTED_FAILURES[
-            NAMESPACE[test]
-        ] = "Issue with nt parser and line endings on windows"
+# if os.name == "nt":
+#     for test in ["literal_with_LINE_FEED", "turtle-subm-15", "turtle-subm-16"]:
+#         EXPECTED_FAILURES[
+#             NAMESPACE[test]
+#         ] = "Issue with nt parser and line endings on windows"
 
 
 @pytest.mark.parametrize(
@@ -82,6 +82,6 @@ if os.name == "nt":
     read_manifest("test/w3c/turtle/manifest.ttl"),
 )
 def test_manifest(rdf_test_uri: URIRef, type: Node, rdf_test: RDFTest):
-    if rdf_test_uri in EXPECTED_FAILURES:
-        pytest.xfail(EXPECTED_FAILURES[rdf_test_uri])
+    # if rdf_test_uri in EXPECTED_FAILURES:
+    #     pytest.xfail(EXPECTED_FAILURES[rdf_test_uri])
     testers[type](rdf_test)

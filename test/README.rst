@@ -56,6 +56,8 @@ Some examples of generating test reports:
 
 .. code-block:: bash
 
+   mkdir -vp /var/tmp/earl/
+
    pytest \
       --earl-asserter-homepage=http://example.com \
       --earl-asserter-name 'Example Name' \
@@ -102,4 +104,4 @@ Some examples of generating test reports:
       --earl-asserter-uri=http://example.com \
       --earl-asserter-name 'Example Name' \
       --earl-report=/var/tmp/earl/earl-turtle.ttl \
-      test/test_turtle_w3c.py
+      test/test_parsers/test_turtle_w3c.py
