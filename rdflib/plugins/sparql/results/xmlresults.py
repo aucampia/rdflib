@@ -4,7 +4,6 @@ from io import BytesIO
 from typing import (
     IO,
     TYPE_CHECKING,
-    Any,
     BinaryIO,
     Dict,
     Optional,
@@ -156,7 +155,11 @@ class XMLResultSerializer(ResultSerializer):
     def __init__(self, result):
         ResultSerializer.__init__(self, result)
 
-    def serialize(self, stream: IO, encoding: str = "utf-8", **kwargs: Any) -> None:
+    def serialize(
+        self, stream: Union[IO[bytes], TextIO], encoding: Optional[str] = None, **kwargs
+    ):
+        if encoding is None:
+            encoding = "utf-8"
         writer = SPARQLXMLWriter(stream, encoding)
         if self.result.type == "ASK":
             writer.write_header([])

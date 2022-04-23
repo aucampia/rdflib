@@ -1,5 +1,5 @@
 import xml.dom.minidom
-from typing import IO, Dict, Optional, Set
+from typing import IO, Dict, Optional, Set, cast
 from xml.sax.saxutils import escape, quoteattr
 
 from rdflib.collection import Collection
@@ -171,6 +171,8 @@ class PrettyXMLSerializer(Serializer):
         encoding: Optional[str] = None,
         **args,
     ):
+        # TODO FIXME: this should be Optional, but it's not because nothing
+        # treats it as such.
         self.__serialized: Dict[Identifier, int] = {}
         store = self.store
         # if base is given here, use that, if not and a base is set for the graph use that
@@ -242,10 +244,11 @@ class PrettyXMLSerializer(Serializer):
         writer = self.writer
 
         if subject in self.forceRDFAbout:
+            subject = cast(URIRef, subject)
             writer.push(RDFVOC.Description)
             writer.attribute(RDFVOC.about, self.relativize(subject))
             writer.pop(RDFVOC.Description)
-            self.forceRDFAbout.remove(subject)  # type: ignore[arg-type]
+            self.forceRDFAbout.remove(subject)
 
         elif subject not in self.__serialized:
             self.__serialized[subject] = 1
@@ -283,10 +286,11 @@ class PrettyXMLSerializer(Serializer):
 
         elif subject in self.forceRDFAbout:
             # TODO FIXME?: this looks like a duplicate of first condition
+            subject = cast(URIRef, subject)
             writer.push(RDFVOC.Description)
             writer.attribute(RDFVOC.about, self.relativize(subject))
             writer.pop(RDFVOC.Description)
-            self.forceRDFAbout.remove(subject)  # type: ignore[arg-type]
+            self.forceRDFAbout.remove(subject)
 
     def predicate(self, predicate, object, depth=1):
         writer = self.writer

@@ -21,20 +21,28 @@ Date/time utilities
 """
 
 from calendar import timegm
+from contextlib import contextmanager
+from io import TextIOWrapper
 from os.path import splitext
 
 # from time import daylight
+# from time import daylight
 from time import altzone, gmtime, localtime, time, timezone
 from typing import (
+    IO,
     TYPE_CHECKING,
     Any,
     Callable,
+    Generator,
     Iterator,
     List,
     Optional,
     Set,
+    TextIO,
     Tuple,
     TypeVar,
+    Union,
+    cast,
 )
 from urllib.parse import quote, urlsplit, urlunsplit
 
@@ -457,6 +465,33 @@ def get_tree(
 
 
 _AnyT = TypeVar("_AnyT")
+
+
+@contextmanager
+def as_textio(
+    anyio: Union[IO[bytes], TextIO],
+    encoding: Optional[str] = None,
+    errors: Union[str, None] = None,
+    write_through: bool = False,
+) -> Generator[TextIO, None, None]:
+    if hasattr(anyio, "encoding"):
+        yield cast(TextIO, anyio)
+    else:
+        textio_wrapper = TextIOWrapper(
+            cast(IO[bytes], anyio),
+            encoding=encoding,
+            errors=errors,
+            write_through=write_through,
+        )
+        yield textio_wrapper
+        textio_wrapper.flush()
+        textio_wrapper.detach()
+
+
+def test():
+    import doctest
+
+    doctest.testmod()
 
 
 def _coalesce(*args: Optional[_AnyT]) -> Optional[_AnyT]:

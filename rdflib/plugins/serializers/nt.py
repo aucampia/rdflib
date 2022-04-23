@@ -10,6 +10,7 @@ from typing import IO, Optional
 from rdflib.graph import Graph
 from rdflib.serializer import Serializer
 from rdflib.term import Literal
+from rdflib.util import as_textio
 
 __all__ = ["NTSerializer"]
 
@@ -37,8 +38,14 @@ class NTSerializer(Serializer):
                 f"Given encoding was: {encoding}"
             )
 
-        for triple in self.store:
-            stream.write(_nt_row(triple).encode())
+        with as_textio(
+            stream,
+            encoding=encoding,  # TODO: CHECK: self.encoding set removed, why?
+            errors="_rdflib_nt_escape",
+            write_through=True,
+        ) as text_stream:
+            for triple in self.store:
+                text_stream.write(_nt_row(triple))
 
 
 class NT11Serializer(NTSerializer):

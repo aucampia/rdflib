@@ -3,11 +3,23 @@
 import logging
 import time
 from contextlib import ExitStack
+from io import BufferedIOBase, RawIOBase, TextIOBase
 from pathlib import Path
 from test.data import TEST_DATA_DIR
 from test.utils.graph import cached_graph
 from test.utils.namespace import RDFT
-from typing import Any, Collection, List, Optional, Set, Tuple, Type, Union
+from typing import (
+    Any,
+    BinaryIO,
+    Collection,
+    List,
+    Optional,
+    Set,
+    TextIO,
+    Tuple,
+    Type,
+    Union,
+)
 
 import pytest
 
@@ -15,7 +27,7 @@ from rdflib import XSD, util
 from rdflib.graph import ConjunctiveGraph, Graph, QuotedGraph
 from rdflib.namespace import RDF, RDFS
 from rdflib.term import BNode, IdentifiedNode, Literal, Node, URIRef
-from rdflib.util import _coalesce, _iri2uri, find_roots, get_tree
+from rdflib.util import _coalesce, _iri2uri, as_textio, find_roots, get_tree
 
 n3source = """\
 @prefix : <http://www.w3.org/2000/10/swap/Primer#>.
@@ -624,3 +636,38 @@ def test_iri2uri(iri: str, expected_result: Union[Set[str], Type[Exception]]) ->
     else:
         assert isinstance(expected_result, set)
         assert result in expected_result
+
+
+def test_as_textio_text(tmp_path: Path) -> None:
+    tmp_file = tmp_path / "file"
+    with tmp_file.open("w") as text_stream:
+        text_io: TextIO = text_stream
+        assert text_io is text_stream
+        with as_textio(text_stream) as text_io:
+            assert text_io is text_stream
+            text_io.write("Test")
+        text_stream.flush()
+        assert tmp_file.read_text() == "Test"
+        assert isinstance(text_io, TextIOBase)  # type: ignore[unreachable]
+
+
+def test_as_textio_buffered_stream(tmp_path: Path) -> None:
+    tmp_file = tmp_path / "file"
+    with tmp_file.open("wb") as buffered_stream:
+        binary_io: BinaryIO = buffered_stream
+        assert binary_io is buffered_stream
+        with as_textio(buffered_stream) as text_io:
+            text_io.write("Test")
+        assert tmp_file.read_text() == "Test"
+        assert isinstance(buffered_stream, BufferedIOBase)
+
+
+def test_as_textio_raw_stream(tmp_path: Path) -> None:
+    tmp_file = tmp_path / "file"
+    with tmp_file.open("wb", buffering=0) as raw_stream:
+        binary_io: BinaryIO = raw_stream
+        assert binary_io is raw_stream
+        with as_textio(raw_stream) as text_io:
+            text_io.write("Test")
+        assert tmp_file.read_text() == "Test"
+        assert isinstance(binary_io, RawIOBase)  # type: ignore[unreachable]
