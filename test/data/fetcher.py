@@ -200,13 +200,12 @@ RESOURCES: List[Resource] = [
     #     type=ArchiveType.ZIP,
     #     pattern=re.compile(r"^(.+)$"),
     # ),
-    # NOTE: Commented out as this contains local modifications.
-    # ArchiveResource(
-    #     remote="https://www.w3.org/2009/sparql/docs/tests/sparql11-test-suite-20121023.tar.gz",
-    #     local_path=(DATA_PATH / "suites" / "DAWG" / "data-sparql11"),
-    #     type=ArchiveType.TAR_GZ,
-    #     pattern=re.compile(r"^[^\/]+[\/](.+)$"),
-    # ),
+    ArchiveResource(
+        remote="https://www.w3.org/2009/sparql/docs/tests/sparql11-test-suite-20121023.tar.gz",
+        local_path=(DATA_PATH / "suites" / "DAWG" / "data-sparql11"),
+        type=ArchiveType.TAR_GZ,
+        pattern=re.compile(r"^[^\/]+[\/](.+)$"),
+    ),
     FileResource(
         remote=Request(
             "http://www.w3.org/2000/01/rdf-schema#", headers={"Accept": "text/turtle"}
