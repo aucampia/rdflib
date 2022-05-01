@@ -206,6 +206,12 @@ RESOURCES: List[Resource] = [
         type=ArchiveType.TAR_GZ,
         pattern=re.compile(r"^[^\/]+[\/](.+)$"),
     ),
+    ArchiveResource(
+        remote="https://www.w3.org/2001/sw/DataAccess/tests/data-r2.tar.gz",
+        local_path=(DATA_PATH / "suites" / "DAWG" / "data-r2"),
+        type=ArchiveType.TAR_GZ,
+        pattern=re.compile(r"^[^\/]+[\/]data-r2[\/](.+)$"),
+    ),
     FileResource(
         remote=Request(
             "http://www.w3.org/2000/01/rdf-schema#", headers={"Accept": "text/turtle"}
