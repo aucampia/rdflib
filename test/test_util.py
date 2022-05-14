@@ -6,7 +6,7 @@ from contextlib import ExitStack
 from pathlib import Path
 from test.data import TEST_DATA_DIR
 from test.utils.graph import cached_graph
-from test.utils.namespace import RDFT
+from test.utils.namespace.namespace import RDFT
 from typing import Any, Collection, List, Optional, Set, Tuple, Type, Union
 
 import pytest

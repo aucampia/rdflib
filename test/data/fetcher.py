@@ -194,12 +194,12 @@ RESOURCES: List[Resource] = [
         pattern=re.compile(r"^(.+)$"),
     ),
     # NOTE: Commented out as these files contains local modifications.
-    # ArchiveResource(
-    #     remote="https://www.w3.org/2013/RDFXMLTests/TESTS.zip",
-    #     local_path=(DATA_PATH / "suites" / "w3c" / "rdfxml"),
-    #     type=ArchiveType.ZIP,
-    #     pattern=re.compile(r"^(.+)$"),
-    # ),
+    ArchiveResource(
+        remote="https://www.w3.org/2013/RDFXMLTests/TESTS.zip",
+        local_path=(DATA_PATH / "suites" / "w3c" / "rdf-xml"),
+        type=ArchiveType.ZIP,
+        pattern=re.compile(r"^(.+)$"),
+    ),
     # NOTE: Commented out as this contains local modifications.
     # ArchiveResource(
     #     remote="https://www.w3.org/2009/sparql/docs/tests/sparql11-test-suite-20121023.tar.gz",
@@ -223,6 +223,18 @@ RESOURCES: List[Resource] = [
     FileResource(
         remote=Request("https://www.w3.org/ns/rdftest.ttl"),
         local_path=(DATA_PATH / "defined_namespaces/rdftest.ttl"),
+    ),
+    FileResource(
+        remote=Request("https://www.w3.org/2001/sw/DataAccess/tests/test-manifest#"),
+        local_path=(DATA_PATH / "defined_namespaces/mf.ttl"),
+    ),
+    FileResource(
+        remote=Request("https://www.w3.org/2001/sw/DataAccess/tests/test-dawg#"),
+        local_path=(DATA_PATH / "defined_namespaces/dawgt.ttl"),
+    ),
+    FileResource(
+        remote=Request("https://www.w3.org/1999/02/22-rdf-syntax-ns#"),
+        local_path=(DATA_PATH / "defined_namespaces/rdf.ttl"),
     ),
 ]
 
