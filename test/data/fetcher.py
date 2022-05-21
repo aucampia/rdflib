@@ -236,6 +236,14 @@ RESOURCES: List[Resource] = [
         remote=Request("https://www.w3.org/1999/02/22-rdf-syntax-ns#"),
         local_path=(DATA_PATH / "defined_namespaces/rdf.ttl"),
     ),
+    FileResource(
+        remote=Request("https://www.w3.org/2001/sw/DataAccess/tests/test-query#"),
+        local_path=(DATA_PATH / "defined_namespaces/qt.ttl"),
+    ),
+    FileResource(
+        remote=Request("https://www.w3.org/2009/sparql/docs/tests/test-update.n3"),
+        local_path=(DATA_PATH / "defined_namespaces/ut.n3"),
+    ),
 ]
 
 
