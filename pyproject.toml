@@ -27,6 +27,8 @@ pep8-naming = ["-N802", "-N803", "-N806", "-N816"]
 pep8-naming = ["-N802", "-N806", "-N815"]
 [tool.flakeheaven.exceptions."rdflib/__init__.py"]
 pycodestyle = ["-E402"]
+[tool.flakeheaven.exceptions."test/utils/namespace/_*"]
+pep8-naming = ["-N815"]
 
 
 [tool.black]

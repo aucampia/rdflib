@@ -38,3 +38,4 @@ class MF(DefinedNamespace):
     result: URIRef  # The expected outcome
     # result: URIRef  # The test status
     resultCardinality: URIRef  # Specifies whether passing the test requires strict or lax cardinality adherence
+    CSVResultFormatTest: URIRef

@@ -8,12 +8,13 @@ The tests for test utilities should be placed inside `test.utils.test`
 from __future__ import print_function
 
 import email.message
+import enum
 import pprint
 import random
 import unittest
 from contextlib import AbstractContextManager, contextmanager
 from http.server import BaseHTTPRequestHandler, HTTPServer, SimpleHTTPRequestHandler
-from pathlib import PurePath, PureWindowsPath
+from pathlib import PurePath, PurePosixPath, PureWindowsPath
 from threading import Thread
 from traceback import print_exc
 from types import TracebackType
@@ -39,7 +40,7 @@ from typing import (
 )
 from unittest.mock import MagicMock, Mock
 from urllib.error import HTTPError
-from urllib.parse import ParseResult, parse_qs, unquote, urlparse
+from urllib.parse import ParseResult, parse_qs, unquote, urlparse, urlsplit, urlunsplit
 from urllib.request import urlopen
 
 import pytest
@@ -54,6 +55,10 @@ from rdflib.plugin import Plugin
 from rdflib.term import Identifier, Literal, Node, URIRef
 
 PluginT = TypeVar("PluginT")
+
+from test.utils.iri import file_uri_to_path
+
+__all__ = ["file_uri_to_path"]
 
 
 def get_unique_plugins(
@@ -105,6 +110,16 @@ GHQuad = Tuple[GHNode, GHNode, GHNode, Identifier]
 GHQuadSet = Set[GHQuad]
 GHQuadFrozenSet = FrozenSet[GHQuad]
 
+NodeT = TypeVar("NodeT", bound=GHNode)
+
+COLLAPSED_BNODE = URIRef("urn:fdc:rdflib.github.io:20220522:collapsed-bnode")
+
+
+class BNodeHandling(str, enum.Enum):
+    COMPARE = "compare"  # Compare BNodes as normal
+    EXCLUDE = "exclude"  # Exclude blanks from comparison
+    COLLAPSE = "collapse"  # Collapse all blank nodes to one IRI
+
 
 class GraphHelper:
     """
@@ -112,63 +127,101 @@ class GraphHelper:
     """
 
     @classmethod
-    def node(cls, node: Node, exclude_blanks: bool = False) -> GHNode:
+    def node(
+        cls, node: Node, bnode_handling: BNodeHandling = BNodeHandling.COMPARE
+    ) -> GHNode:
         """
         Return the identifier of the provided node.
         """
         if isinstance(node, Graph):
-            xset = cast(GHNode, cls.triple_or_quad_set(node, exclude_blanks))
+            xset = cast(GHNode, cls.triple_or_quad_set(node, bnode_handling))
             return xset
 
         return cast(Identifier, node)
 
     @classmethod
     def nodes(
-        cls, nodes: Tuple[Node, ...], exclude_blanks: bool = False
+        cls,
+        nodes: Tuple[Node, ...],
+        bnode_handling: BNodeHandling = BNodeHandling.COMPARE,
     ) -> Tuple[GHNode, ...]:
         """
         Return the identifiers of the provided nodes.
         """
         result = []
         for node in nodes:
-            result.append(cls.node(node, exclude_blanks))
+            result.append(cls.node(node, bnode_handling))
+        return tuple(result)
+
+    @classmethod
+    def _contains_bnodes(cls, nodes: Tuple[GHNode, ...]) -> bool:
+        """
+        Return true if any of the nodes are BNodes.
+        """
+        for node in nodes:
+            if isinstance(node, BNode):
+                return True
+        return False
+
+    @classmethod
+    def _collapse_bnodes(cls, nodes: Tuple[NodeT, ...]) -> Tuple[NodeT, ...]:
+        """
+        Return BNodes as COLLAPSED_BNODE
+        """
+        result: List[NodeT] = []
+        for node in nodes:
+            if isinstance(node, BNode):
+                result.append(cast(NodeT, COLLAPSED_BNODE))
+            else:
+                result.append(node)
         return tuple(result)
 
     @classmethod
     def triple_set(
-        cls, graph: Graph, exclude_blanks: bool = False
+        cls, graph: Graph, bnode_handling: BNodeHandling = BNodeHandling.COMPARE
     ) -> GHTripleFrozenSet:
         result: GHTripleSet = set()
         for sn, pn, on in graph.triples((None, None, None)):
-            s, p, o = cls.nodes((sn, pn, on), exclude_blanks)
-            if exclude_blanks and (
-                isinstance(s, BNode) or isinstance(p, BNode) or isinstance(o, BNode)
+            s, p, o = cls.nodes((sn, pn, on), bnode_handling)
+            if bnode_handling == BNodeHandling.EXCLUDE and cls._contains_bnodes(
+                (s, p, o)
             ):
                 continue
+            elif bnode_handling == BNodeHandling.COLLAPSE:
+                s, p, o = cls._collapse_bnodes((s, p, o))
+            # if bnode_handling == BNodeHandling.EXCLUDE (
+            #     isinstance(s, BNode) or isinstance(p, BNode) or isinstance(o, BNode)
+            # ):
+            #     continue
             result.add((s, p, o))
         return frozenset(result)
 
     @classmethod
     def triple_sets(
-        cls, graphs: Iterable[Graph], exclude_blanks: bool = False
+        cls,
+        graphs: Iterable[Graph],
+        bnode_handling: BNodeHandling = BNodeHandling.COMPARE,
     ) -> List[GHTripleFrozenSet]:
         """
         Extracts the set of all triples from the supplied Graph.
         """
         result: List[GHTripleFrozenSet] = []
         for graph in graphs:
-            result.append(cls.triple_set(graph, exclude_blanks))
+            result.append(cls.triple_set(graph, bnode_handling))
         return result
 
     @classmethod
     def quad_set(
-        cls, graph: ConjunctiveGraph, exclude_blanks: bool = False
+        cls,
+        graph: ConjunctiveGraph,
+        bnode_handling: BNodeHandling = BNodeHandling.COMPARE,
     ) -> GHQuadFrozenSet:
         """
         Extracts the set of all quads from the supplied ConjunctiveGraph.
         """
         result: GHQuadSet = set()
         for sn, pn, on, gn in graph.quads((None, None, None, None)):
+            gn_id: GHNode
             if isinstance(graph, Dataset):
                 assert isinstance(gn, Identifier)
                 gn_id = gn
@@ -177,36 +230,41 @@ class GraphHelper:
                 gn_id = gn.identifier
             else:
                 raise ValueError(f"invalid graph type {type(graph)}: {graph!r}")
-            s, p, o = cls.nodes((sn, pn, on), exclude_blanks)
-            if exclude_blanks and (
-                isinstance(s, BNode) or isinstance(p, BNode) or isinstance(o, BNode)
+            s, p, o = cls.nodes((sn, pn, on), bnode_handling)
+            if bnode_handling == BNodeHandling.EXCLUDE and cls._contains_bnodes(
+                (s, p, o, gn_id)
             ):
                 continue
+            elif bnode_handling == BNodeHandling.COLLAPSE:
+                s, p, o, gn_id = cls._collapse_bnodes((s, p, o, gn_id))
             quad: GHQuad = (s, p, o, gn_id)
             result.add(quad)
         return frozenset(result)
 
     @classmethod
     def triple_or_quad_set(
-        cls, graph: Graph, exclude_blanks: bool = False
+        cls, graph: Graph, bnode_handling: BNodeHandling = BNodeHandling.COMPARE
     ) -> Union[GHQuadFrozenSet, GHTripleFrozenSet]:
         """
         Extracts quad or triple sets depending on whether or not the graph is
         ConjunctiveGraph or a normal Graph.
         """
         if isinstance(graph, ConjunctiveGraph):
-            return cls.quad_set(graph, exclude_blanks)
-        return cls.triple_set(graph, exclude_blanks)
+            return cls.quad_set(graph, bnode_handling)
+        return cls.triple_set(graph, bnode_handling)
 
     @classmethod
     def assert_triple_sets_equals(
-        cls, lhs: Graph, rhs: Graph, exclude_blanks: bool = False
+        cls,
+        lhs: Graph,
+        rhs: Graph,
+        bnode_handling: BNodeHandling = BNodeHandling.COMPARE,
     ) -> None:
         """
         Asserts that the triple sets in the two graphs are equal.
         """
-        lhs_set = cls.triple_set(lhs, exclude_blanks) if isinstance(lhs, Graph) else lhs
-        rhs_set = cls.triple_set(rhs, exclude_blanks) if isinstance(rhs, Graph) else rhs
+        lhs_set = cls.triple_set(lhs, bnode_handling) if isinstance(lhs, Graph) else lhs
+        rhs_set = cls.triple_set(rhs, bnode_handling) if isinstance(rhs, Graph) else rhs
         assert lhs_set == rhs_set
 
     @classmethod
@@ -214,13 +272,13 @@ class GraphHelper:
         cls,
         lhs: Union[ConjunctiveGraph, GHQuadSet],
         rhs: Union[ConjunctiveGraph, GHQuadSet],
-        exclude_blanks: bool = False,
+        bnode_handling: BNodeHandling = BNodeHandling.COMPARE,
     ) -> None:
         """
         Asserts that the quads sets in the two graphs are equal.
         """
-        lhs_set = cls.quad_set(lhs, exclude_blanks) if isinstance(lhs, Graph) else lhs
-        rhs_set = cls.quad_set(rhs, exclude_blanks) if isinstance(rhs, Graph) else rhs
+        lhs_set = cls.quad_set(lhs, bnode_handling) if isinstance(lhs, Graph) else lhs
+        rhs_set = cls.quad_set(rhs, bnode_handling) if isinstance(rhs, Graph) else rhs
         assert lhs_set == rhs_set
 
     @classmethod
@@ -228,18 +286,18 @@ class GraphHelper:
         cls,
         lhs: Union[Graph, GHTripleSet, GHQuadSet],
         rhs: Union[Graph, GHTripleSet, GHQuadSet],
-        exclude_blanks: bool = False,
+        bnode_handling: BNodeHandling = BNodeHandling.COMPARE,
     ) -> None:
         """
         Asserts that that ther quad or triple sets from the two graphs are equal.
         """
         lhs_set = (
-            cls.triple_or_quad_set(lhs, exclude_blanks)
+            cls.triple_or_quad_set(lhs, bnode_handling)
             if isinstance(lhs, Graph)
             else lhs
         )
         rhs_set = (
-            cls.triple_or_quad_set(rhs, exclude_blanks)
+            cls.triple_or_quad_set(rhs, bnode_handling)
             if isinstance(rhs, Graph)
             else rhs
         )
@@ -319,36 +377,6 @@ def eq_(lhs, rhs, msg=None):
         assert lhs == rhs
 
 
-PurePathT = TypeVar("PurePathT", bound=PurePath)
-
-
-def file_uri_to_path(
-    file_uri: str,
-    path_class: Type[PurePathT] = PurePath,  # type: ignore[assignment]
-    url2pathname: Optional[Callable[[str], str]] = None,
-) -> PurePathT:
-    """
-    This function returns a pathlib.PurePath object for the supplied file URI.
-
-    :param str file_uri: The file URI ...
-    :param class path_class: The type of path in the file_uri. By default it uses
-        the system specific path pathlib.PurePath, to force a specific type of path
-        pass pathlib.PureWindowsPath or pathlib.PurePosixPath
-    :returns: the pathlib.PurePath object
-    :rtype: pathlib.PurePath
-    """
-    is_windows_path = isinstance(path_class(), PureWindowsPath)
-    file_uri_parsed = urlparse(file_uri)
-    if url2pathname is None:
-        if is_windows_path:
-            url2pathname = nt_url2pathname
-        else:
-            url2pathname = unquote
-    pathname = url2pathname(file_uri_parsed.path)
-    result = path_class(pathname)
-    return result
-
-
 ParamsT = TypeVar("ParamsT", bound=tuple)
 Marks = Collection[Union[Mark, MarkDecorator]]
 
@@ -387,3 +415,9 @@ def affix_tuples(
         suffix = tuple()
     for item in tuples:
         yield (*prefix, *item, *suffix)
+
+
+def ensure_suffix(value: str, suffix: str) -> str:
+    if not value.endswith(suffix):
+        value = f"{value}{suffix}"
+    return value

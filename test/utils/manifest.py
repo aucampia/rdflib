@@ -57,7 +57,7 @@ def read_manifest(f, base=None, legacy=False) -> Iterable[Tuple[Node, URIRef, RD
 
                 # run legacy tests with no approval set
                 if legacy:
-                    approved |= (e, DAWG.approval, None) not in g and (
+                    approved |= (e, DAWGT.approval, None) not in g and (
                         e,
                         RDFT.approval,
                         None,

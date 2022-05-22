@@ -33,6 +33,7 @@ class RDFT(DefinedNamespace):
     Test: URIRef  # Superclass of all RDF Tests.
     TestXMLNegativeSyntax: URIRef  # A negative RDF/XML syntax test.
     XMLEval: URIRef  # A positive RDF/XML evaluation test.
+    TestXMLEval: URIRef
 
     TestTrigPositiveSyntax: URIRef
     TestTrigNegativeSyntax: URIRef

@@ -10,8 +10,7 @@ from test.utils.graph import (
     superclasses_of,
 )
 from test.utils.namespace import RDFT
-from typing import Any, List, Set, Tuple, Type, Union
-from xml.dom.minidom import Identified
+from typing import Set, Tuple, Type, Union
 
 import pytest
 from pyparsing import Optional
