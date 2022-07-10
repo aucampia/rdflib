@@ -8,19 +8,22 @@ using setEvalFn
 
 import datetime as py_datetime  # naming conflict with function within this module
 import hashlib
+import logging
 import math
 import operator as pyop  # python operators
 import random
 import re
 import sys
+import traceback
 import uuid
 import warnings
 from decimal import ROUND_HALF_UP, Decimal, InvalidOperation
 from functools import reduce
+from typing import Set
 from urllib.parse import quote
 
 import isodate
-from pyparsing import ParseResults
+from pyparsing import Optional, ParseResults
 
 from rdflib import RDF, XSD, BNode, Literal, URIRef, Variable
 from rdflib.plugins.sparql.datatypes import (
@@ -298,13 +301,23 @@ def Builtin_CONCAT(expr, ctx):
 
     # dt/lang passed on only if they all match
 
-    dt = set(x.datatype for x in expr.arg if isinstance(x, Literal))
+    dt_set: Optional[Set[str]] = None
+    lang_set: Optional[Set[str]] = None
+    for x in expr.arg:
+        if not isinstance(x, Literal):
+            dt = None
+            lang = None
+            break
+        dt = x.datatype
+        lang_set.add(x)
+
     dt = dt.pop() if len(dt) == 1 else None
 
     lang = set(x.language for x in expr.arg if isinstance(x, Literal))
     lang = lang.pop() if len(lang) == 1 else None
 
-    return Literal("".join(string(x) for x in expr.arg), datatype=dt, lang=lang)
+    result = Literal("".join(string(x) for x in expr.arg), datatype=dt, lang=lang)
+    return result
 
 
 def _compatibleStrings(a, b):

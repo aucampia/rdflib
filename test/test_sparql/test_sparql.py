@@ -1,6 +1,9 @@
 import logging
+from pathlib import Path
+from test.data import TEST_DATA_DIR
 from test.utils import eq_
-from typing import Any, Callable, Mapping, Sequence, Type
+from test.utils.graph import GraphSourceType, cached_graph
+from typing import Any, Callable, Mapping, Optional, Sequence, Type
 
 import pytest
 from pytest import MonkeyPatch
@@ -10,16 +13,16 @@ import rdflib.plugins.sparql.operators
 import rdflib.plugins.sparql.parser
 from rdflib import BNode, ConjunctiveGraph, Graph, Literal, URIRef
 from rdflib.compare import isomorphic
-from rdflib.namespace import RDF, RDFS, Namespace
+from rdflib.namespace import RDF, RDFS, XSD, Namespace
 from rdflib.plugins.sparql import prepareQuery, sparql
 from rdflib.plugins.sparql.algebra import translateQuery
 from rdflib.plugins.sparql.evaluate import evalPart
 from rdflib.plugins.sparql.evalutils import _eval
 from rdflib.plugins.sparql.parser import parseQuery
 from rdflib.plugins.sparql.parserutils import prettify_parsetree
-from rdflib.plugins.sparql.sparql import SPARQLError
+from rdflib.plugins.sparql.sparql import NotBoundError, SPARQLError
 from rdflib.query import Result
-from rdflib.term import Identifier, Variable
+from rdflib.term import Identifier, Node, Variable
 
 
 def test_graph_prefix():
@@ -440,8 +443,34 @@ def test_custom_eval_exception(
                 reason="TypeError does not propagate through list constructor"
             ),
         ),
+        pytest.param(
+            lambda result: len(result.bindings),
+            TypeError,
+            id="len+bindings+TypeError",
+        ),
+        # pytest.param(
+        #     lambda result: len(result),
+        #     AttributeError,
+        #     id="len+AttributeError",
+        # ),
+        # pytest.param(
+        #     lambda result: list(result),
+        #     AttributeError,
+        #     id="list+AttributeError",
+        # ),
+        # pytest.param(
+        #     lambda result: logging.debug("result.bindings = %s", result.bindings),
+        #     AttributeError,
+        #     id="log+bindings+AttributeError",
+        # ),
         pytest.param(lambda result: len(result), RuntimeError, id="len+RuntimeError"),
         pytest.param(lambda result: list(result), RuntimeError, id="list+RuntimeError"),
+        pytest.param(lambda result: list(result), RuntimeError, id="list+RuntimeError"),
+        pytest.param(
+            lambda result: len(result.bindings),
+            RuntimeError,
+            id="len+bindings+RuntimeError",
+        ),
     ],
 )
 def test_operator_exception(
@@ -811,9 +840,42 @@ def test_operator_exception(
             ],
             id="select-group-concat-optional-many",
         ),
+        pytest.param(
+            """
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+            SELECT
+                ?predicate
+                (
+                    GROUP_CONCAT(
+                        DISTINCT( STR( ?vocab ) );
+                        separator="|"
+                    ) AS ?vocabs
+                )
+            {
+
+                VALUES ?types { rdf:Property rdfs:Class }.
+                VALUES ?predicate { rdf:type }.
+                ?thing ?predicate ?types.
+                OPTIONAL {
+                  ?thing rdfs:isDefinedBy ?vocab.
+                }
+            }
+            GROUP BY ?predicate ORDER BY ?predicate
+            """,
+            [
+                {
+                    Variable("predicate"): RDF.type,
+                    Variable("vocabs"): Literal(
+                        "http://www.w3.org/2000/01/rdf-schema#"
+                    ),
+                },
+            ],
+            id="select-group-concat-optional-many",
+        ),
     ],
 )
-def test_queries(
+def test_queries_against_rdfs_graph(
     query_string: str,
     expected_bindings: Sequence[Mapping["Variable", "Identifier"]],
     rdfs_graph: Graph,
@@ -831,3 +893,144 @@ def test_queries(
     result = rdfs_graph.query(query)
     logging.debug("result = %s", result)
     assert expected_bindings == result.bindings
+
+
+BLANK_GRAPH = Graph()
+
+
+@pytest.mark.parametrize(
+    ["graph_source", "query_string", "expected_bindings"],
+    [
+        pytest.param(
+            (TEST_DATA_DIR / "defined_namespaces/rdfs.ttl"),
+            """
+            SELECT (concat("", sha1(?x)) AS ?y) WHERE {}
+            """,
+            [{}],
+            id="bind-select-nothing-error",
+        ),
+        pytest.param(
+            (TEST_DATA_DIR / "defined_namespaces/rdfs.ttl"),
+            """
+            SELECT (concat("", sha1(?x)) AS ?y) ("A" as ?x) WHERE {}
+            """,
+            [
+                {
+                    Variable("x"): Literal("A"),
+                }
+            ],
+            id="bind-select-nothing-error",
+        ),
+        pytest.param(
+            (TEST_DATA_DIR / "defined_namespaces/rdfs.ttl"),
+            """
+            SELECT (concat("", <http://example.com>) AS ?y) ("A" as ?x) WHERE {}
+            """,
+            [
+                {
+                    Variable("x"): Literal("A"),
+                }
+            ],
+            id="bind-select-nothing-error",
+        ),
+        pytest.param(
+            (TEST_DATA_DIR / "defined_namespaces/rdfs.ttl"),
+            """
+            SELECT (concat("", sha1(?x)) AS ?y) WHERE {?s rdfs:label "Resource"}
+            """,
+            [{}],
+            id="bind-select-something-error",
+        ),
+        pytest.param(
+            (TEST_DATA_DIR / "defined_namespaces/rdfs.ttl"),
+            """
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT ?s WHERE {?s rdfs:label "Resource" BIND (sha1(?x) AS ?m)}
+            """,
+            [
+                {
+                    Variable("s"): RDFS.Resource,
+                }
+            ],
+            id="bind-nonexisting",
+        ),
+        pytest.param(
+            (TEST_DATA_DIR / "defined_namespaces/rdfs.ttl"),
+            """
+            PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+            SELECT ?s ?m WHERE {?s rdfs:label "Resource" BIND (sha1(?x) AS ?m)}
+            """,
+            [
+                {
+                    Variable("s"): RDFS.Resource,
+                }
+            ],
+            id="bind-nonexisting",
+        ),
+    ],
+)
+def test_queries(
+    graph_source: Optional[GraphSourceType],
+    query_string: str,
+    expected_bindings: Sequence[Mapping["Variable", "Identifier"]],
+) -> None:
+    """
+    Results of queries against the rdfs.ttl return the expected values.
+    """
+    if graph_source is not None:
+        graph = cached_graph((graph_source,))
+    else:
+        graph = BLANK_GRAPH
+    query_tree = parseQuery(query_string)
+    logging.debug("query_tree = %s", prettify_parsetree(query_tree))
+    logging.debug("query_tree = %s", query_tree)
+    query = translateQuery(query_tree)
+    logging.debug("query = %s", query)
+    query._original_args = (query_string, {}, None)
+    result = graph.query(query)
+    logging.debug("result = %s", result)
+    assert expected_bindings == result.bindings
+
+
+@pytest.mark.parametrize(
+    ["expression", "expected_result"],
+    [
+        ('concat("foo", "bar")', Literal("foobar")),
+        ('concat("foo"@en, "bar"@en)', Literal("foobar", lang="en")),
+        (
+            'concat("foo"^^xsd:string, "bar"^^xsd:string)',
+            Literal("foobar", datatype=XSD.string),
+        ),
+        ('concat("foo", "bar"^^xsd:string)', Literal("foobar")),
+        ('concat("foo"@en, "bar")', Literal("foobar")),
+        ('concat("foo"@en, "bar"^^xsd:string)', Literal("foobar")),
+        ('concat("foo"@fr, "bar"@en)', Literal("foobar")),
+        ("<https://example.com>", URIRef("https://example.com")),
+        ('concat(<https://example.com>, "/suffix")', None),
+        ("strlen(<https://example.com>)", None),
+        ("sha1(<https://example.com>)", None),
+    ],
+)
+def test_expression(
+    expression: str,
+    expected_result: Optional[Node],
+) -> None:
+    """
+    Results of queries against the rdfs.ttl return the expected values.
+    """
+    graph = BLANK_GRAPH
+    query_string = f"SELECT ({expression} AS ?bound_variable) WHERE {{}}"
+    query_tree = parseQuery(query_string)
+    logging.debug("query_tree = %s", prettify_parsetree(query_tree))
+    logging.debug("query_tree = %s", query_tree)
+    query = translateQuery(query_tree)
+    logging.debug("query = %s", query)
+    query._original_args = (query_string, {}, None)
+    result = graph.query(query)
+    logging.debug("result = %s", result)
+    variable = Variable("bound_variable")
+    assert len(result.bindings) == 1
+    if expected_result is None:
+        assert variable not in result.bindings[0]
+    else:
+        assert expected_result == result.bindings[0][variable]

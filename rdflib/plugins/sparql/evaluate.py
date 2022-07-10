@@ -17,6 +17,7 @@ also return a dict of list of dicts
 import collections
 import itertools
 import json as j
+import logging
 import re
 from typing import Any, Deque, Dict, Generator, Iterable, List, Tuple, Union
 from urllib.parse import urlencode
@@ -105,7 +106,8 @@ def evalExtend(
 
             yield c.merge({extend.var: e})
 
-        except SPARQLError:
+        except SPARQLError as error:
+            logging.info("error = %s, c = %s", error, c, exc_info=True)
             yield c
 
 

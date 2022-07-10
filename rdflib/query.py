@@ -1,7 +1,9 @@
 import itertools
+import logging
 import os
 import shutil
 import tempfile
+import traceback
 import types
 import warnings
 from io import BytesIO
@@ -181,7 +183,12 @@ class Result(object):
         a list of variable bindings as dicts
         """
         if self._genbindings:
-            self._bindings += list(self._genbindings)
+            try:
+                self._bindings += list(self._genbindings)
+            except AttributeError as error:
+                logging.debug("caught", exc_info=True)
+                raise RuntimeError(str(error)) from error
+                # raise
             self._genbindings = None
 
         return self._bindings
@@ -189,6 +196,7 @@ class Result(object):
     @bindings.setter
     def bindings(self, b):
         if isinstance(b, (types.GeneratorType, itertools.islice)):
+            # logging.debug("stack = %s", "".join(traceback.format_stack()))
             self._genbindings = b
             self._bindings = []
         else:
