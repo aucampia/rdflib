@@ -1,0 +1,28 @@
+# https://www.gitpod.io/docs/references/gitpod-yml
+image:
+  file: Dockerfile.devcontainer
+  context: .
+tasks:
+  - init: |
+      python -m pip install --upgrade -r requirements.dev.txt -r requirements.dev-extra.txt
+  - command: |
+      task validate:static
+      task --list
+github:
+  prebuilds:
+    master: true
+    pullRequests: true
+    pullRequestsFromForks: true
+    addCheck: prevent-merge-on-error
+    addComment: true
+vscode:
+  extensions:
+    - ms-python.python
+    - redhat.vscode-yaml
+    - redhat.vscode-xml
+    - stardog-union.stardog-rdf-grammars
+    - lextudio.restructuredtext
+    - trond-snekvik.simple-rst
+    - EditorConfig.EditorConfig
+    - paulvarache.vscode-taskfile
+    - stardog-union.vscode-stardog-languages
