@@ -3,12 +3,13 @@
 #   file: Dockerfile.devcontainer
 #   context: .
 tasks:
-  # - init: |
-  #     brew install go-task/tap/go-task
-  #     task install:pip-deps
-  - command: |
+  - env:
+      WITH_VENV: true
+    init: |
       brew install go-task/tap/go-task
-      task install:pip-deps
+      task venv:clean venv:install
+    command: |
+      brew install go-task/tap/go-task
       task validate:static
       task --list
 github:
