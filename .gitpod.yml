@@ -4,7 +4,7 @@
 #   context: .
 tasks:
   - init: |
-      sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
+      brew install go-task/tap/go-task
       task install:pip-deps
     command: |
       task validate:static
