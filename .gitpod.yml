@@ -1,15 +1,11 @@
 # https://www.gitpod.io/docs/references/gitpod-yml
-# image:
-#   file: Dockerfile.devcontainer
-#   context: .
+image:
+  file: Dockerfile.devcontainer
+  context: .
 tasks:
-  - env:
-      WITH_VENV: true
-    init: |
-      brew install go-task/tap/go-task
-      task venv:clean venv:install
+  - before: |
+      task install:pip-deps
     command: |
-      brew install go-task/tap/go-task
       task validate:static
       task --list
 github:
