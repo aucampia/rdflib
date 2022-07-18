@@ -4,8 +4,9 @@
 #   context: .
 tasks:
   - init: |
+      sudo sh -c "$(curl --location https://taskfile.dev/install.sh)" -- -d -b /usr/local/bin
       task install:pip-deps
-  - command: |
+    command: |
       task validate:static
       task --list
 github:
