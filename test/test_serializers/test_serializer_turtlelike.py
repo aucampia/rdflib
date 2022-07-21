@@ -38,7 +38,7 @@ def test_subject(
     graph = Graph(bind_namespaces="none")
     graph.bind(pname_ns, namespace)
     graph.bind("p_test_marker", MARKERNS)
-    # graph.add((MARKERNS["subject0"], MARKERNS["predicate0"], namespace["object0"]))
+    graph.add((MARKERNS["subject0"], MARKERNS["predicate0"], namespace["object0"]))
     graph.add((MARKERNS["subject1"], MARKERNS["predicate1"], namespace[pname_local]))
     data = graph.serialize(format=format)
     logging.debug("data = %s", data)
