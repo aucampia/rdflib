@@ -19,13 +19,16 @@ MARKERNS = Namespace("example:test:")
     ["format", "namespace", "pname_ns", "pname_local", "expected_output"],
     [
         ("turtle", OUTPUTURLNS, "", r"foo", r":foo"),
-        ("turtle", OUTPUTURLNS, "", r"foo~bar", r":foo~bar"),
+        ("turtle", OUTPUTURLNS, "", r"foo~bar", r":foo\~bar"),
+        ("turtle", OUTPUTURLNS, "", r"foo#bar", r":foo\#bar"),
         ("turtle", OUTPUTURLNS, "", r"foo/bar", r":foo\/bar"),
-        ("turtle", OUTPUTURLNS, "", r"foo:bar", f"<{OUTPUTURLNS['foo:bar']}>"),
+        ("turtle", OUTPUTURLNS, "", r"foo:bar", r":foo:bar"),
         ("turtle", OUTPUTURLNS, "ons", r"foo", r"ons:foo"),
         ("turtle", OUTPUTURLNS, "ons", r"foo/bar", r"ons:foo\/bar"),
         ("turtle", OUTPUTURLNS, "ons", r"foo_bar", r"ons:foo_bar"),
-        ("turtle", OUTPUTURLNS, "ons", r"foo~bar", r":foo~bar"),
+        ("turtle", OUTPUTURLNS, "ons", r"foo#bar", r"ons:foo\#bar"),
+        ("turtle", OUTPUTURLNS, "ons", r"foo~bar", r"ons:foo\~bar"),
+        ("turtle", OUTPUTURLNS, "ons", r"foo:bar", r"ons:foo:bar"),
     ],
 )
 def test_subject(
