@@ -42,7 +42,6 @@ def test_subject(
     graph.add((MARKERNS["subject1"], MARKERNS["predicate1"], namespace[pname_local]))
     data = graph.serialize(format=format)
     logging.debug("data = %s", data)
-    # pattern = re.compile(r"^.*\sp_test_marker:subject\s+_test_marker:predicate\s+(\S+)\s*.$", re.DOTALL)
     pattern = re.compile(
         r"^.*\sp_test_marker:subject1\s+p_test_marker:predicate1\s+(\S+)\s*[.]\s*$",
         re.DOTALL,
