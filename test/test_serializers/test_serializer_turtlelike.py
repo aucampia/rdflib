@@ -3,19 +3,13 @@ This module contains tests for the parsing of the turtle family of formats: N3,
 Turtle, NTriples, NQauds and TriG.
 """
 
-import enum
-import itertools
-from dataclasses import dataclass, field
 import logging
 import re
-from typing import Callable, Dict, Iterator, List, Set, Tuple, Union
 
 import pytest
-from _pytest.mark.structures import Mark, MarkDecorator, ParameterSet
 
-from rdflib import XSD, Graph, Literal, Namespace
-from rdflib.term import Identifier
-from rdflib.util import from_n3
+from rdflib import Graph, Namespace
+
 
 OUTPUTURLNS = Namespace("http://example.com/output/")
 MARKERNS = Namespace("example:test:")
@@ -34,7 +28,7 @@ MARKERNS = Namespace("example:test:")
         ("turtle", OUTPUTURLNS, "ons", r"foo~bar", r":foo~bar"),
     ],
 )
-def test_pname(
+def test_subject(
     format: str,
     namespace: Namespace,
     pname_ns: str,
