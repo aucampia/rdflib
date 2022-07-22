@@ -487,7 +487,15 @@ class NamespaceManager(object):
             return ":".join([qNameParts[0], qNameParts[-1]])
 
     def compute_qname(self, uri: str, generate: bool = True) -> Tuple[str, URIRef, str]:
+        """
+        This method computes the QName for a given URI.
 
+        :param uri: The URI for which the CURIE should be computed.
+        :param generate: Whether or not this function should generate a
+            namespace if one is not found.
+        :return: A tuple with ``(prefix_label, namespace_uri, local_part)``
+        """
+        logging.debug("uri = %s, generate = %s", uri, generate)
         prefix: Optional[str]
         if uri not in self.__cache:
 

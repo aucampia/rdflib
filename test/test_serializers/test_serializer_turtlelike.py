@@ -23,12 +23,12 @@ MARKERNS = Namespace("example:test:")
         ("turtle", OUTPUTURLNS, "", r"foo#bar", r":foo\#bar"),
         ("turtle", OUTPUTURLNS, "", r"foo/bar", r":foo\/bar"),
         ("turtle", OUTPUTURLNS, "", r"foo:bar", r":foo:bar"),
-        ("turtle", OUTPUTURLNS, "ons", r"foo", r"ons:foo"),
-        ("turtle", OUTPUTURLNS, "ons", r"foo/bar", r"ons:foo\/bar"),
+        pytest.param("turtle", OUTPUTURLNS, "ons", r"foo", r"ons:foo", id="turtle-urlns-prefix-plain"),
+        pytest.param("turtle", OUTPUTURLNS, "ons", r"foo/bar", r"ons:foo\/bar", id="turtle-urlns-prefix-forward_slash"),
         ("turtle", OUTPUTURLNS, "ons", r"foo_bar", r"ons:foo_bar"),
         ("turtle", OUTPUTURLNS, "ons", r"foo#bar", r"ons:foo\#bar"),
         ("turtle", OUTPUTURLNS, "ons", r"foo~bar", r"ons:foo\~bar"),
-        ("turtle", OUTPUTURLNS, "ons", r"foo:bar", r"ons:foo:bar"),
+        pytest.param("turtle", OUTPUTURLNS, "ons", r"foo:bar", r"ons:foo:bar", id="turtle-urlns-prefix-colon"),
     ],
 )
 def test_subject(
@@ -41,7 +41,7 @@ def test_subject(
     graph = Graph(bind_namespaces="none")
     graph.bind(pname_ns, namespace)
     graph.bind("p_test_marker", MARKERNS)
-    graph.add((MARKERNS["subject0"], MARKERNS["predicate0"], namespace["object0"]))
+    # graph.add((MARKERNS["subject0"], MARKERNS["predicate0"], namespace["object0"]))
     graph.add((MARKERNS["subject1"], MARKERNS["predicate1"], namespace[pname_local]))
     data = graph.serialize(format=format)
     logging.debug("data = %s", data)
