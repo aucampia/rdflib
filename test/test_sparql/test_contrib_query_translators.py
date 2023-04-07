@@ -1,7 +1,5 @@
 from rdflib import Graph
-from rdflib.plugins.sparql._contrib.valuesToTheLeftOfTheJoins import (
-    ValuesToTheLeftOfTheJoin,
-)
+from rdflib._contrib.sparql.translators import ValuesToTheLeftOfTheJoin
 from rdflib.plugins.sparql.parser import *
 
 # from rdflib.plugins.sparql.processor import prepareQuery

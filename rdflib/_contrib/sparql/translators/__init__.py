@@ -1,15 +1,15 @@
-"""
-Move a VALUES clause to the left of the join.
-This is normally smart as this is often a much shorter list than what is generated
-by the other expression.
-"""
-
 from typing import Any
 
 from rdflib.plugins.sparql.sparql import Query
 
 
 class ValuesToTheLeftOfTheJoin:
+    """
+    Move a VALUES clause to the left of the join.
+    This is normally smart as this is often a much shorter list than what is generated
+    by the other expression.
+    """
+
     @classmethod
     def translate(cls, query: Query) -> Query:
         main = query.algebra
