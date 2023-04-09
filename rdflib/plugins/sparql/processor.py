@@ -109,9 +109,13 @@ _QueryTranslatorType = Callable[[Query], Query]
 
 
 class SPARQLProcessor(Processor):
-    def __init__(self, graph, translators: Optional[List[_QueryTranslatorType]] = None):
+    def __init__(
+        self, graph: Graph, translators: Optional[List[_QueryTranslatorType]] = None
+    ):
         self.graph = graph
-        self.translators = translators
+        if translators is None:
+            translators = []
+        self._translators = translators
 
     # NOTE on type error: this is because the super type constructor does not
     # accept base argument and thie position of the DEBUG argument is
@@ -147,7 +151,7 @@ class SPARQLProcessor(Processor):
         if isinstance(strOrQuery, str):
             strOrQuery = translateQuery(parseQuery(strOrQuery), base, initNs)
 
-        for translator in self.translators:
+        for translator in self._translators:
             strOrQuery = translator(strOrQuery)
 
         return evalQuery(self.graph, strOrQuery, initBindings, base)
