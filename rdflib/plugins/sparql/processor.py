@@ -74,9 +74,17 @@ class SPARQLResult(Result):
         self.graph = res.get("graph")
 
 
+_UpdateTranslatorType = Callable[[Update], Update]
+
+
 class SPARQLUpdateProcessor(UpdateProcessor):
-    def __init__(self, graph):
+    def __init__(
+        self, graph: Graph, translators: Optional[List[_UpdateTranslatorType]] = None
+    ):
         self.graph = graph
+        if translators is None:
+            translators = []
+        self._translators = translators
 
     def update(
         self,
@@ -101,6 +109,9 @@ class SPARQLUpdateProcessor(UpdateProcessor):
 
         if isinstance(strOrQuery, str):
             strOrQuery = translateUpdate(parseUpdate(strOrQuery), initNs=initNs)
+
+        for translator in self._translators:
+            strOrQuery = translator(strOrQuery)
 
         return evalUpdate(self.graph, strOrQuery, initBindings)
 
