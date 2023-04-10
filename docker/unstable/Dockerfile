@@ -1,4 +1,4 @@
-FROM docker.io/library/python:3.11.2-slim@sha256:d0e839882b87135b355361efeb9e9030c9d2a808da06434f4c99eb4009c15e64
+FROM docker.io/library/python:3.11.3-slim@sha256:5a67c38a7c28ad09d08f4e153280023a2df77189b55af7804d7ceb96fee6a68f
 
 # This file is generated from docker:unstable in Taskfile.yml
 COPY var/requirements.txt /var/tmp/build/
